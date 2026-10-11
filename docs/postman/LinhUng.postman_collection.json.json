@@ -1,0 +1,301 @@
+{
+  "info": {
+    "_postman_id": "00b0fb6f-93db-4b30-9e0b-2a4773520203",
+    "name": "My Collection",
+    "description": "### Welcome to Postman! This is your first collection. \n\nCollections are your starting point for building and testing APIs. You can use this one to:\n\n• Group related requests\n• Test your API in real-world scenarios\n• Document and share your requests\n\nUpdate the name and overview whenever you’re ready to make it yours.\n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "58876274",
+    "_collection_link": "https://go.postman.co/collection/58876274-00b0fb6f-93db-4b30-9e0b-2a4773520203?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "1.Tao_Don",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const r = pm.response.json();\npm.environment.set(\"authCode\", r.authCode);\npm.environment.set(\"orderCode\", r.orderCode);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": " {\"productCode\":\"DAY_PASS\",\"lang\":\"vi\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/payments/online",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "payments",
+            "online"
+          ]
+        },
+        "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+      },
+      "response": []
+    },
+    {
+      "name": "2.Doi_authToken",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "   const r = pm.response.json();\r\n   if (r.accessToken) pm.environment.set(\"touristToken\", r.accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": " {\"authCode\":\"{{authCode}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/auth/exchange",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "auth",
+            "exchange"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3.Login_Staff",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "   pm.environment.set(\"staffToken\", pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "   {\"username\":\"staff1\",\"password\":\"Staff@12345\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/auth/staff/login",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "auth",
+            "staff",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4.Tao_Don_Cash",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const r = pm.response.json();\r\npm.environment.set(\"orderCode\", r.orderCode);\r\npm.environment.set(\"orderId\", r.orderId);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"productCode\":\"DAY_PASS\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/payments/cash",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "payments",
+            "cash"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5.Staff_Tra_don",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6.Xac_nhan_tien",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{staffToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"amountReceived\":20000}",  
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/payments/admin/orders/{{orderId}}/confirm-cash",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "payments",
+            "admin",
+            "orders",
+            "{{orderId}}",
+            "confirm-cash"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6.1 Xac_nhan_tien_sai",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{staffToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"amountReceived\":20000}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/payments/admin/orders/{{orderId}}/confirm-cash",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "payments",
+            "admin",
+            "orders",
+            "{{orderId}}",
+            "confirm-cash"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7.Lay_ma_Ngan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "8.Doi_ma_Ngan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "9.Ko_co_token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10.Sai_token_role",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    }
+  ]
+}
