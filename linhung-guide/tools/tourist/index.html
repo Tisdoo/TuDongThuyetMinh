@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thuyết minh Chùa Linh Ứng</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bar:52px;--red:#b91c1c;--bg:#faf7f2;--ink:#222}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+#topbar{position:fixed;top:0;left:0;right:0;height:var(--bar);display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--red);color:#fff;z-index:1200}
+#brand{font-weight:600}
+.circle{width:36px;height:36px;border-radius:50%;border:2px solid #fff;background:transparent;color:#fff;font-weight:700;cursor:pointer}
+.menu{position:fixed;top:var(--bar);right:8px;background:#fff;border-radius:8px;box-shadow:0 4px 16px #0003;z-index:1300;min-width:170px;overflow:hidden}
+.menu button{display:block;width:100%;padding:12px 16px;border:0;background:#fff;text-align:left;font-size:1rem;cursor:pointer}
+.menu button.active{font-weight:700;background:#fef2f2}
+main{padding:calc(var(--bar) + 16px) 16px 24px;max-width:520px;margin:0 auto}
+.hidden{display:none!important}
+.card{background:#fff;border-radius:12px;padding:14px;margin:14px 0;box-shadow:0 1px 4px #0001}
+.price{font-size:1.4rem;font-weight:700}
+.btn{display:block;width:100%;padding:14px;margin:10px 0;border-radius:10px;border:1px solid #ccc;background:#fff;font-size:1rem;cursor:pointer}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+.btn.link{border:0;background:none;color:var(--red)}
+.btn.small{display:inline-block;width:auto;padding:8px 14px;margin:0}
+.btn:disabled{opacity:.5}
+.muted{color:#666}.small{font-size:.85rem}.err{color:var(--red)}
+.bigcode{font-size:2.4rem;letter-spacing:.2em;font-weight:700;text-align:center;margin:12px 0}
+#shortInput{width:100%;padding:12px;font-size:1.4rem;letter-spacing:.2em;text-align:center;text-transform:uppercase;border:1px solid #bbb;border-radius:8px}
+.spinner{width:40px;height:40px;border:4px solid #ddd;border-top-color:var(--red);border-radius:50%;animation:sp 1s linear infinite;margin:20px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+#screenMap{position:fixed;top:var(--bar);left:0;right:0;bottom:0}
+#map{position:absolute;inset:0}
+.mapmsg{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#fff;padding:8px 14px;border-radius:8px;z-index:1000;box-shadow:0 2px 8px #0003;max-width:80%;text-align:center}
+.pin{width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 1px 4px #0006}
+.pin.near{background:#16a34a;transform:scale(1.2)}
+#fabs{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+.fab{width:42px;height:42px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 8px #0004;font-size:1.2rem;cursor:pointer}
+.fab.on{background:#16a34a;color:#fff}
+.banner{position:absolute;top:10px;left:62px;right:56px;background:#fff;border-radius:10px;padding:8px 10px;z-index:1050;box-shadow:0 2px 10px #0004;display:flex;align-items:center;gap:8px}
+.banner span{flex:1;font-size:.9rem}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:58%;overflow:auto;background:#fff;border-radius:16px 16px 0 0;padding:16px;box-shadow:0 -4px 16px #0003;z-index:1100}
+.sheet h2{margin:0 36px 4px 0}
+.sheet .x{position:absolute;top:8px;right:10px}
+.x{border:0;background:none;font-size:1.6rem;cursor:pointer}
+.thumb{width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin:8px 0}
+.row{display:flex;gap:8px;margin:10px 0}
+.row .btn{margin:0}
+.toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 14px;border-radius:10px;z-index:1300;max-width:90%;text-align:center;font-size:.9rem}
+</style>
+</head>
+<body>
+<header id="topbar">
+  <div id="brand" data-i18n="title"></div>
+  <button id="langBtn" class="circle" aria-label="Language">VI</button>
+</header>
+<div id="langMenu" class="menu hidden"></div>
+
+<main id="screens">
+  <section id="screenPay">
+    <h1 data-i18n="payHeading"></h1>
+    <p data-i18n="payIntro"></p>
+    <div class="card">
+      <div class="muted" data-i18n="ticketTitle"></div>
+      <div id="priceText" class="price">...</div>
+    </div>
+    <button id="btnOnline" class="btn primary" data-i18n="payOnline"></button>
+    <button id="btnCash" class="btn" data-i18n="payCash"></button>
+    <p class="muted small" data-i18n="mockNote"></p>
+  </section>
+
+  <section id="screenWait" class="hidden">
+    <h1 data-i18n="waitTitle"></h1>
+    <div class="spinner"></div>
+    <p data-i18n="waitText"></p>
+    <p id="waitProgress" class="muted"></p>
+  </section>
+
+  <section id="screenCash" class="hidden">
+    <h1 data-i18n="cashTitle"></h1>
+    <p data-i18n="cashStep1"></p>
+    <div id="orderCode" class="bigcode"></div>
+    <div id="cashAmount" class="price" style="text-align:center"></div>
+    <p id="cashStatus" class="muted" style="text-align:center"></p>
+    <hr>
+    <p data-i18n="cashStep2"></p>
+    <input id="shortInput" maxlength="10" autocomplete="off" autocapitalize="characters">
+    <button id="btnShort" class="btn primary" data-i18n="submit"></button>
+    <p id="shortMsg" class="err"></p>
+    <button id="btnCashBack" class="btn link" data-i18n="back"></button>
+  </section>
+
+  <section id="screenMsg" class="hidden">
+    <h1 id="msgTitle"></h1>
+    <p id="msgText"></p>
+    <button id="msgBtn" class="btn primary"></button>
+  </section>
+</main>
+
+<section id="screenMap" class="hidden">
+  <div id="map"></div>
+  <div id="mapMsg" class="mapmsg hidden"></div>
+  <div id="fabs">
+    <button id="btnLocate" class="fab">&#9678;</button>
+    <button id="btnAuto" class="fab">&#128266;</button>
+    <button id="btnSim" class="fab hidden">&#129514;</button>
+  </div>
+  <div id="banner" class="banner hidden">
+    <span id="bannerText"></span>
+    <button id="bannerListen" class="btn primary small"></button>
+    <button id="bannerClose" class="x">&times;</button>
+  </div>
+  <div id="sheet" class="sheet hidden">
+    <button id="sheetClose" class="x">&times;</button>
+    <h2 id="sheetTitle"></h2>
+    <div id="sheetDist" class="muted small"></div>
+    <img id="sheetThumb" class="thumb hidden" alt="">
+    <p id="sheetShort" style="font-weight:600"></p>
+    <p id="sheetDesc"></p>
+    <p id="sheetNote" class="muted small"></p>
+    <div class="row">
+      <button id="btnListen" class="btn primary"></button>
+      <button id="btnStop" class="btn hidden"></button>
+      <button id="btnDir" class="btn"></button>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+</section>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+const API = '/api';
+const K = { token: 'll_token', lang: 'll_lang', data: 'll_dataset' };
+const PENDING = 'll_pending_auth';
+const params = new URLSearchParams(location.search);
+const SIM_ENABLED = params.get('sim') === '1';
+const TTS_LANG = { vi: 'vi-VN', en: 'en-US', 'zh-CN': 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', fr: 'fr-FR' };
+const DEFAULT_LANGS = [{ code: 'vi', nativeName: 'Tiếng Việt' }, { code: 'en', nativeName: 'English' }];
+
+const T = {
+  vi: {
+    title: 'Thuyết minh Chùa Linh Ứng', payHeading: 'Mở khóa hướng dẫn',
+    payIntro: 'Thanh toán vé để nghe thuyết minh tự động theo vị trí của bạn.',
+    ticketTitle: 'Vé tham quan', validFor: 'có hiệu lực {h} giờ',
+    payOnline: 'Thanh toán online', payCash: 'Thanh toán tiền mặt tại quầy',
+    mockNote: 'Chế độ thử nghiệm: thanh toán online là giả lập.',
+    waitTitle: 'Đang xác nhận thanh toán', waitText: 'Vui lòng đợi trong giây lát...',
+    waitFailTitle: 'Chưa xác nhận được', waitFailText: 'Hệ thống chưa nhận được kết quả. Hãy thử lại hoặc liên hệ nhân viên.',
+    retry: 'Thử lại', cashTitle: 'Thanh toán tiền mặt', cashStep1: 'Đưa mã đơn này cho nhân viên và trả tiền:',
+    cashWaiting: 'Đang chờ nhân viên xác nhận...', cashPaid: 'Đã thu tiền. Hãy nhập mã nhân viên đọc cho bạn.',
+    cashExpired: 'Đơn đã hết hạn hoặc bị hủy. Hãy tạo đơn mới.', cashStep2: 'Nhập mã truy cập do nhân viên đọc:',
+    submit: 'Xác nhận', codeInvalid: 'Mã sai hoặc đã hết hạn.', codeLocked: 'Bạn nhập sai quá nhiều lần. Thử lại sau 5 phút.',
+    cashNotYet: 'Chưa thu tiền, vui lòng chờ.', back: 'Quay lại', errTitle: 'Có lỗi xảy ra',
+    errPayment: 'Không tạo được đơn thanh toán.', errCode: 'Mã thanh toán không hợp lệ hoặc đã hết hạn.',
+    payFailTitle: 'Thanh toán không thành công', payFailText: 'Bạn chưa bị trừ tiền. Hãy thử lại.', payAgain: 'Thanh toán lại',
+    networkError: 'Không kết nối được máy chủ.', mapLoading: 'Đang tải dữ liệu...',
+    noDataset: 'Chưa có dữ liệu thuyết minh. Quản trị viên cần publish dataset.', noPoi: 'Chưa có điểm tham quan nào.',
+    listen: 'Nghe thuyết minh', stop: 'Dừng', directions: 'Chỉ đường', nearYou: 'Bạn đang gần',
+    gpsDenied: 'Bạn chưa cho phép định vị. Bản đồ vẫn dùng được, hãy chạm vào điểm để xem.', gpsWeak: 'Tín hiệu GPS yếu.',
+    farAway: 'Bạn đang cách chùa khoảng {km} km.', noVoice: 'Thiết bị chưa có giọng đọc cho ngôn ngữ này, hãy đọc văn bản.',
+    autoOn: 'Tự động phát: bật', autoOff: 'Tự động phát: tắt', autoOnSpeech: 'Đã bật tự động thuyết minh',
+    fallbackNote: 'Chưa có bản dịch, hiển thị bằng {lang}.', distAway: 'Cách bạn {m} m',
+    simOn: 'Giả lập vị trí: bật. Chạm lên bản đồ để di chuyển.', simOff: 'Giả lập vị trí: tắt', locate: 'Vị trí của tôi'
+  },
+  en: {
+    title: 'Linh Ung Pagoda Guide', payHeading: 'Unlock the guide',
+    payIntro: 'Buy a ticket to hear automatic narration based on your location.',
+    ticketTitle: 'Visitor ticket', validFor: 'valid for {h} hours',
+    payOnline: 'Pay online', payCash: 'Pay cash at the counter',
+    mockNote: 'Test mode: online payment is simulated.',
+    waitTitle: 'Confirming payment', waitText: 'Please wait a moment...',
+    waitFailTitle: 'Not confirmed yet', waitFailText: 'No result received. Try again or ask the staff.',
+    retry: 'Try again', cashTitle: 'Cash payment', cashStep1: 'Give this order code to the staff and pay:',
+    cashWaiting: 'Waiting for staff confirmation...', cashPaid: 'Payment received. Enter the code the staff reads to you.',
+    cashExpired: 'The order expired or was cancelled. Create a new one.', cashStep2: 'Enter the access code from the staff:',
+    submit: 'Confirm', codeInvalid: 'Wrong or expired code.', codeLocked: 'Too many wrong attempts. Try again in 5 minutes.',
+    cashNotYet: 'Payment not received yet, please wait.', back: 'Back', errTitle: 'Something went wrong',
+    errPayment: 'Could not create the payment order.', errCode: 'The payment code is invalid or expired.',
+    payFailTitle: 'Payment failed', payFailText: 'You have not been charged. Please try again.', payAgain: 'Pay again',
+    networkError: 'Cannot reach the server.', mapLoading: 'Loading data...',
+    noDataset: 'No guide data yet. An admin must publish the dataset.', noPoi: 'No points of interest yet.',
+    listen: 'Listen', stop: 'Stop', directions: 'Directions', nearYou: 'You are near',
+    gpsDenied: 'Location permission denied. The map still works, tap a point to read about it.', gpsWeak: 'Weak GPS signal.',
+    farAway: 'You are about {km} km from the pagoda.', noVoice: 'No voice for this language on your device, please read the text.',
+    autoOn: 'Auto-play: on', autoOff: 'Auto-play: off', autoOnSpeech: 'Automatic narration enabled',
+    fallbackNote: 'No translation yet, showing {lang}.', distAway: '{m} m away',
+    simOn: 'Location simulation on. Tap the map to move.', simOff: 'Location simulation off', locate: 'My location'
+  }
+};
+
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function normalizeLang(l) {
+  l = (l || '').toLowerCase();
+  if (l.startsWith('vi')) return 'vi';
+  if (l.startsWith('zh')) return 'zh-CN';
+  for (const c of ['ja', 'ko', 'fr', 'en']) if (l.startsWith(c)) return c;
+  return 'en';
+}
+let lang = localStorage.getItem(K.lang) || normalizeLang(navigator.language);
+const t = (key) => (T[lang] && T[lang][key]) ?? T.en[key] ?? key;
+
+let dataset = null, product = null, map = null, userMarker = null, accCircle = null, routeLine = null;
+let lastFix = null, watchId = null, engine = null, currentPoi = null, bannerPoi = null, bannerTimer = null;
+let autoplay = false, simOn = false, polling = false, cashPoll = null, toastTimer = null, speakTok = 0;
+const markers = new Map();
+
+// ---------- Tiện ích giao diện ----------
+const SCREENS = ['screenPay', 'screenWait', 'screenCash', 'screenMsg', 'screenMap'];
+function show(id) {
+  SCREENS.forEach((s) => $(s).classList.toggle('hidden', s !== id));
+  $('screens').classList.toggle('hidden', id === 'screenMap');
+  if (id !== 'screenMap') stopSpeech();
+  $('langMenu').classList.add('hidden');
+}
+function renderStatic() {
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  $('langBtn').textContent = lang.split('-')[0].toUpperCase();
+  $('btnListen').textContent = t('listen'); $('btnStop').textContent = t('stop'); $('btnDir').textContent = t('directions');
+  $('bannerListen').textContent = t('listen');
+  $('btnLocate').title = t('locate'); $('btnAuto').title = autoplay ? t('autoOn') : t('autoOff');
+  document.title = t('title');
+}
+function toast(msg, ms = 4000) {
+  const el = $('toast'); el.textContent = msg; el.classList.remove('hidden');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}
+function showMessage(title, text, btnLabel, onClick) {
+  show('screenMsg'); $('msgTitle').textContent = title; $('msgText').textContent = text;
+  $('msgBtn').textContent = btnLabel; $('msgBtn').onclick = onClick;
+}
+const fmtMoney = (p, cur) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: cur || 'VND', maximumFractionDigits: 0 }).format(p);
+
+// ---------- API & token ----------
+function tokenExp(tok) {
+  try { return (JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0) * 1000; } catch { return 0; }
+}
+function getToken() {
+  const tk = localStorage.getItem(K.token);
+  return tk && tokenExp(tk) > Date.now() + 5000 ? tk : null;
+}
+async function api(method, path, { body, auth, headers } = {}) {
+  const h = { ...(body ? { 'content-type': 'application/json' } : {}), ...(headers || {}) };
+  if (auth) {
+    const tk = getToken();
+    if (!tk) { logout(); return { status: 401, data: null }; }
+    h.authorization = 'Bearer ' + tk;
+  }
+  const res = await fetch(API + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
+  let data = null; try { data = await res.json(); } catch { /* 304 hoặc rỗng */ }
+  if (res.status === 401 && auth) logout();
+  return { status: res.status, data };
+}
+const errCode = (r) => (r && r.data && r.data.error && r.data.error.code) || ('HTTP_' + (r && r.status));
+function logout() { localStorage.removeItem(K.token); showPay(); }
+function saveToken(data) {
+  localStorage.setItem(K.token, data.accessToken);
+  sessionStorage.removeItem(PENDING);
+  enterMap();
+}
+
+// ---------- Thanh toán ----------
+async function showPay() {
+  show('screenPay'); renderStatic();
+  try {
+    const r = await api('GET', '/payments/products');
+    if (r.status === 200 && r.data && r.data.length) {
+      product = r.data.find((p) => p.code === 'DAY_PASS') || r.data[0];
+      $('priceText').textContent = fmtMoney(product.price, product.currency) + ' · ' + t('validFor').replace('{h}', product.validity_hours);
+    }
+  } catch { $('priceText').textContent = t('networkError'); }
+}
+async function payOnline() {
+  $('btnOnline').disabled = true;
+  try {
+    const r = await api('POST', '/payments/online', { body: { productCode: (product && product.code) || 'DAY_PASS', lang } });
+    if (r.status === 201) {
+      sessionStorage.setItem(PENDING, r.data.authCode);
+      location.href = r.data.paymentUrl;
+      return;
+    }
+    showMessage(t('errTitle'), t('errPayment') + ' (' + errCode(r) + ')', t('back'), showPay);
+  } catch { showMessage(t('errTitle'), t('networkError'), t('back'), showPay); }
+  finally { $('btnOnline').disabled = false; }
+}
+async function payCash() {
+  $('btnCash').disabled = true;
+  try {
+    const r = await api('POST', '/payments/cash', { body: { productCode: (product && product.code) || 'DAY_PASS', lang } });
+    if (r.status !== 201) { showMessage(t('errTitle'), t('errPayment') + ' (' + errCode(r) + ')', t('back'), showPay); return; }
+    show('screenCash');
+    $('orderCode').textContent = r.data.orderCode;
+    $('cashAmount').textContent = fmtMoney(r.data.amount, r.data.currency);
+    $('cashStatus').textContent = t('cashWaiting'); $('shortMsg').textContent = ''; $('shortInput').value = '';
+    clearInterval(cashPoll);
+    cashPoll = setInterval(async () => {
+      try {
+        const s = await api('GET', '/payments/orders/' + encodeURIComponent(r.data.orderCode));
+        if (s.status !== 200) return;
+        const st = s.data.status;
+        $('cashStatus').textContent = st === 'PAID' ? t('cashPaid') : st === 'PENDING' ? t('cashWaiting') : t('cashExpired');
+        if (st !== 'PENDING') clearInterval(cashPoll);
+      } catch { /* thử lại lần sau */ }
+    }, 3000);
+  } catch { showMessage(t('errTitle'), t('networkError'), t('back'), showPay); }
+  finally { $('btnCash').disabled = false; }
+}
+async function submitShortCode() {
+  const code = $('shortInput').value.trim();
+  if (!code) return;
+  $('shortMsg').textContent = '';
+  try {
+    const r = await api('POST', '/auth/exchange-short', { body: { shortCode: code, lang } });
+    if (r.status === 200) { clearInterval(cashPoll); saveToken(r.data); return; }
+    $('shortMsg').textContent = r.status === 429 ? t('codeLocked') : r.status === 202 ? t('cashNotYet') : t('codeInvalid');
+  } catch { $('shortMsg').textContent = t('networkError'); }
+}
+async function startPolling(authCode) {
+  if (polling) return;
+  polling = true; show('screenWait');
+  for (let i = 1; i <= 20; i++) {
+    $('waitProgress').textContent = i + '/20';
+    try {
+      const r = await api('POST', '/auth/exchange', { body: { authCode, lang } });
+      if (r.status === 200) { polling = false; saveToken(r.data); return; }
+      if (r.status !== 202) {
+        polling = false; sessionStorage.removeItem(PENDING);
+        showMessage(t('errTitle'), t('errCode') + ' (' + errCode(r) + ')', t('payAgain'), showPay);
+        return;
+      }
+    } catch { /* mất mạng: thử lại */ }
+    await sleep(3000);
+  }
+  polling = false;
+  showMessage(t('waitFailTitle'), t('waitFailText'), t('retry'), () => startPolling(authCode));
+}
+function handleReturn() {
+  const code = params.get('auth_code'), status = params.get('status');
+  history.replaceState(null, '', '/');
+  if (status === 'failed') {
+    sessionStorage.removeItem(PENDING);
+    showMessage(t('payFailTitle'), t('payFailText'), t('payAgain'), showPay);
+    return;
+  }
+  if (code) { sessionStorage.setItem(PENDING, code); startPolling(code); } else showPay();
+}
+
+// ---------- Dataset (tải một lần, dùng bộ nhớ đệm khi chưa đổi phiên bản) ----------
+async function loadDataset() {
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(K.data) || 'null'); } catch { /* bỏ qua */ }
+  const headers = cached && cached.version ? { 'if-none-match': '"v' + cached.version + '"' } : {};
+  const r = await api('GET', '/poi/dataset/latest', { auth: true, headers });
+  if (r.status === 200) {
+    dataset = r.data;
+    try { localStorage.setItem(K.data, JSON.stringify(dataset)); } catch { /* đầy bộ nhớ */ }
+  } else if (r.status === 304 && cached) dataset = cached;
+  else if (r.status === 404) { dataset = null; $('mapMsg').textContent = t('noDataset'); }
+  else if (r.status !== 401) {
+    if (cached) dataset = cached; else { dataset = null; $('mapMsg').textContent = t('errTitle') + ' (' + errCode(r) + ')'; }
+  }
+}
+async function enterMap() {
+  show('screenMap');
+  $('mapMsg').textContent = t('mapLoading'); $('mapMsg').classList.remove('hidden');
+  try { await loadDataset(); } catch { $('mapMsg').textContent = t('networkError'); return; }
+  if (!dataset) return;
+  buildLangMenu();
+  initMap(); drawPois(); startGps();
+  if (dataset.pois.length) $('mapMsg').classList.add('hidden'); else $('mapMsg').textContent = t('noPoi');
+  if (SIM_ENABLED) $('btnSim').classList.remove('hidden');
+}
+
+// ---------- Bản đồ ----------
+function initMap() {
+  if (map) { map.invalidateSize(); return; }
+  map = L.map('map', { zoomControl: false });
+  const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
+  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
+  osm.addTo(map);
+  L.control.layers({ 'Bản đồ': osm, 'Vệ tinh': sat }, null, { position: 'topright' }).addTo(map);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  map.setView([16.1, 108.277], 16);
+  map.on('click', (e) => { if (simOn) setFix({ lat: e.latlng.lat, lng: e.latlng.lng, accuracy: 5 }); });
+}
+function drawPois() {
+  markers.forEach((m) => { m.marker.remove(); m.circle.remove(); });
+  markers.clear();
+  const pts = [];
+  dataset.pois.forEach((p, i) => {
+    const icon = L.divIcon({ className: '', html: '<div class="pin">' + (i + 1) + '</div>', iconSize: [30, 30], iconAnchor: [15, 15] });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(map).on('click', () => openPoi(p));
+    const circle = L.circle([p.lat, p.lng], { radius: p.triggerRadiusM, color: '#b91c1c', weight: 1, fillOpacity: 0.08 }).addTo(map);
+    markers.set(p.id, { marker, circle });
+    pts.push([p.lat, p.lng]);
+  });
+  engine = new Geofence(dataset.pois);
+  if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 18 });
+  map.invalidateSize();
+}
+function drawUser(f) {
+  if (!userMarker) {
+    userMarker = L.circleMarker([f.lat, f.lng], { radius: 8, color: '#fff', weight: 2, fillColor: '#2563eb', fillOpacity: 1 }).addTo(map);
+    accCircle = L.circle([f.lat, f.lng], { radius: Math.min(f.accuracy, 300), color: '#2563eb', weight: 1, fillOpacity: 0.1 }).addTo(map);
+  } else {
+    userMarker.setLatLng([f.lat, f.lng]); accCircle.setLatLng([f.lat, f.lng]); accCircle.setRadius(Math.min(f.accuracy, 300));
+  }
+}
+
+// ---------- GPS & geofence ----------
+function haversine(a, b) {
+  const R = 6371000, rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+class Geofence {
+  constructor(pois, opts) {
+    this.pois = pois; this.inside = new Set(); this.last = new Map();
+    this.o = Object.assign({ exitBufferM: 10, cooldownMs: 5 * 60000, maxAccuracyM: 50 }, opts || {});
+  }
+  update(fix, now = Date.now()) {
+    if (fix.accuracy > this.o.maxAccuracyM) return null;
+    const entered = [];
+    for (const p of this.pois) {
+      const d = haversine(fix, { lat: p.lat, lng: p.lng }), was = this.inside.has(p.id);
+      if (!was && d <= p.triggerRadiusM) {
+        this.inside.add(p.id);
+        const lastT = this.last.get(p.id);
+        if (lastT === undefined || now - lastT >= this.o.cooldownMs) entered.push({ p, d });
+      } else if (was && d >= p.triggerRadiusM + this.o.exitBufferM) this.inside.delete(p.id);
+    }
+    if (!entered.length) return null;
+    entered.sort((a, b) => b.p.priority - a.p.priority || a.d - b.d);
+    this.last.set(entered[0].p.id, now);
+    return entered[0].p;
+  }
+}
+function startGps() {
+  if (watchId !== null) return;
+  if (!('geolocation' in navigator)) { toast(t('gpsDenied')); return; }
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => { if (!simOn) setFix({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy || 999 }); },
+    (err) => toast(err.code === 1 ? t('gpsDenied') : t('gpsWeak')),
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }
+  );
+}
+function setFix(fix) {
+  const first = !lastFix;
+  lastFix = fix; drawUser(fix);
+  let nearest = Infinity;
+  dataset.pois.forEach((p) => {
+    const d = haversine(fix, { lat: p.lat, lng: p.lng });
+    nearest = Math.min(nearest, d);
+    const m = markers.get(p.id), el = m && m.marker.getElement();
+    if (el) { const pin = el.querySelector('.pin'); if (pin) pin.classList.toggle('near', d <= 100); }
+  });
+  if (first) {
+    if (nearest < 2000) map.setView([fix.lat, fix.lng], Math.max(map.getZoom(), 17));
+    else if (nearest !== Infinity) toast(t('farAway').replace('{km}', (nearest / 1000).toFixed(1)));
+  }
+  const picked = engine && engine.update(fix);
+  if (picked) onEnter(picked);
+  updateDistance();
+}
+function onEnter(poi) {
+  if (autoplay) { openPoi(poi); speakPoi(poi); } else showBanner(poi);
+}
+function showBanner(poi) {
+  const { c } = content(poi);
+  bannerPoi = poi;
+  $('bannerText').textContent = t('nearYou') + ' ' + ((c && c.name) || poi.code);
+  $('banner').classList.remove('hidden');
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => $('banner').classList.add('hidden'), 15000);
+}
+
+// ---------- Chi tiết POI ----------
+function langName(code) {
+  const l = ((dataset && dataset.languages) || DEFAULT_LANGS).find((x) => x.code === code);
+  return l ? l.nativeName || l.name : code;
+}
+function content(poi) {
+  const tr = poi.translations || {};
+  let code = lang, c = tr[code];
+  if (!c || !c.name) {
+    code = tr.en && tr.en.name ? 'en' : tr.vi && tr.vi.name ? 'vi' : Object.keys(tr)[0];
+    c = code ? tr[code] : null;
+  }
+  return { c, code, fallback: code !== lang };
+}
+function fillSheet(poi) {
+  const { c, code, fallback } = content(poi);
+  $('sheetTitle').textContent = (c && c.name) || poi.code;
+  $('sheetShort').textContent = (c && c.shortDescription) || '';
+  $('sheetDesc').textContent = (c && c.description) || '';
+  $('sheetNote').textContent = fallback && code ? t('fallbackNote').replace('{lang}', langName(code)) : '';
+  const img = $('sheetThumb');
+  if (poi.thumbnailUrl) { img.src = poi.thumbnailUrl; img.classList.remove('hidden'); img.onerror = () => img.classList.add('hidden'); }
+  else img.classList.add('hidden');
+}
+function openPoi(poi) {
+  currentPoi = poi; fillSheet(poi);
+  $('sheet').classList.remove('hidden'); $('banner').classList.add('hidden');
+  setSpeaking(false); map.panTo([poi.lat, poi.lng]); updateDistance();
+}
+function closeSheet() {
+  currentPoi = null; $('sheet').classList.add('hidden'); stopSpeech();
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+}
+function updateDistance() {
+  if (!currentPoi || !lastFix) { $('sheetDist').textContent = ''; return; }
+  const d = haversine(lastFix, { lat: currentPoi.lat, lng: currentPoi.lng });
+  $('sheetDist').textContent = t('distAway').replace('{m}', Math.round(d));
+  const pts = [[lastFix.lat, lastFix.lng], [currentPoi.lat, currentPoi.lng]];
+  if (routeLine) routeLine.setLatLngs(pts);
+  else routeLine = L.polyline(pts, { color: '#2563eb', weight: 3, dashArray: '6 8' }).addTo(map);
+}
+
+// ---------- Thuyết minh bằng giọng đọc của trình duyệt (Web Speech API) ----------
+let voices = [];
+const hasTts = 'speechSynthesis' in window;
+function loadVoices() { voices = hasTts ? speechSynthesis.getVoices() : []; }
+if (hasTts) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function voiceFor(bcp) {
+  const pre = bcp.split('-')[0].toLowerCase();
+  return voices.find((v) => v.lang.toLowerCase() === bcp.toLowerCase()) || voices.find((v) => v.lang.toLowerCase().startsWith(pre));
+}
+function chunk(text) {
+  const parts = text.replace(/\s+/g, ' ').match(/[^.!?。！？]+[.!?。！？]?/g) || [text];
+  const out = []; let cur = '';
+  for (const p of parts) {
+    if ((cur + p).length > 180 && cur) { out.push(cur.trim()); cur = p; } else cur += p;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+function speak(text, code) {
+  if (!hasTts) { toast(t('noVoice')); return false; }
+  const bcp = TTS_LANG[code] || 'en-US', v = voiceFor(bcp);
+  if (!v && voices.length) { toast(t('noVoice')); return false; }
+  speechSynthesis.cancel();
+  const tok = ++speakTok, parts = chunk(text);
+  parts.forEach((part, i) => {
+    const u = new SpeechSynthesisUtterance(part);
+    u.lang = bcp; u.rate = 0.95; if (v) u.voice = v;
+    if (i === parts.length - 1) u.onend = () => { if (tok === speakTok) setSpeaking(false); };
+    u.onerror = () => { if (tok === speakTok) setSpeaking(false); };
+    speechSynthesis.speak(u);
+  });
+  setSpeaking(true);
+  return true;
+}
+function speakPoi(poi) {
+  const { c, code } = content(poi);
+  if (c) speak([c.name, c.description].filter(Boolean).join('. '), code);
+}
+function stopSpeech() { speakTok++; if (hasTts) speechSynthesis.cancel(); setSpeaking(false); }
+function setSpeaking(on) { $('btnListen').classList.toggle('hidden', on); $('btnStop').classList.toggle('hidden', !on); }
+
+// ---------- Ngôn ngữ ----------
+function buildLangMenu() {
+  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : DEFAULT_LANGS;
+  const menu = $('langMenu'); menu.innerHTML = '';
+  list.forEach((l) => {
+    const b = document.createElement('button');
+    b.textContent = l.nativeName || l.name; if (l.code === lang) b.className = 'active';
+    b.onclick = () => setLang(l.code);
+    menu.appendChild(b);
+  });
+}
+function setLang(code) {
+  lang = code; localStorage.setItem(K.lang, code);
+  stopSpeech(); renderStatic(); buildLangMenu(); $('langMenu').classList.add('hidden');
+  if (currentPoi) fillSheet(currentPoi);
+  if (!$('screenPay').classList.contains('hidden') && product) {
+    $('priceText').textContent = fmtMoney(product.price, product.currency) + ' · ' + t('validFor').replace('{h}', product.validity_hours);
+  }
+}
+
+// ---------- Sự kiện ----------
+$('btnOnline').onclick = payOnline;
+$('btnCash').onclick = payCash;
+$('btnShort').onclick = submitShortCode;
+$('shortInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitShortCode(); });
+$('btnCashBack').onclick = () => { clearInterval(cashPoll); showPay(); };
+$('langBtn').onclick = () => $('langMenu').classList.toggle('hidden');
+$('sheetClose').onclick = closeSheet;
+$('bannerClose').onclick = () => $('banner').classList.add('hidden');
+$('bannerListen').onclick = () => { if (bannerPoi) { openPoi(bannerPoi); speakPoi(bannerPoi); } };
+$('btnListen').onclick = () => { if (currentPoi) speakPoi(currentPoi); };
+$('btnStop').onclick = stopSpeech;
+$('btnDir').onclick = () => {
+  if (!currentPoi) return;
+  window.open('https://www.google.com/maps/dir/?api=1&destination=' + currentPoi.lat + ',' + currentPoi.lng + '&travelmode=walking', '_blank');
+};
+$('btnLocate').onclick = () => {
+  if (lastFix && map) map.setView([lastFix.lat, lastFix.lng], 18); else toast(t('gpsWeak'));
+};
+$('btnAuto').onclick = () => {
+  autoplay = !autoplay;
+  $('btnAuto').classList.toggle('on', autoplay); renderStatic();
+  toast(autoplay ? t('autoOn') : t('autoOff'));
+  // Trình duyệt (nhất là iOS) chỉ cho đọc sau một thao tác chạm: đọc câu ngắn để "mở khóa"
+  if (autoplay) speak(t('autoOnSpeech'), lang);
+};
+$('btnSim').onclick = () => {
+  simOn = !simOn; $('btnSim').classList.toggle('on', simOn);
+  toast(simOn ? t('simOn') : t('simOff'));
+};
+
+// ---------- Khởi động ----------
+function boot() {
+  renderStatic(); buildLangMenu();
+  if (location.pathname.startsWith('/payment/return')) return handleReturn();
+  if (getToken()) return enterMap();
+  const pending = sessionStorage.getItem(PENDING);
+  if (pending) return startPolling(pending);
+  showPay();
+}
+boot();
+})();
+</script>
+</body>
+</html>
