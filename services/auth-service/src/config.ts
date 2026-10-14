@@ -23,4 +23,8 @@ export const config = {
   seedAdminUsername: process.env.SEED_ADMIN_USERNAME ?? 'admin',
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'Admin@12345',
   isProd: process.env.NODE_ENV === 'production',
+  // Docker dat NODE_ENV=production nen can bat co nay de tao staff1 khi dev/demo. Production that: dat false.
+  seedDevAccounts: process.env.SEED_DEV_ACCOUNTS
+    ? process.env.SEED_DEV_ACCOUNTS === 'true'
+    : process.env.NODE_ENV !== 'production',
 };

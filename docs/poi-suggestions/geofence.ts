@@ -41,8 +41,8 @@ export class GeofenceEngine {
       const was = this.inside.has(poi.id);
       if (!was && dist <= poi.triggerRadiusM) {
         this.inside.add(poi.id);
-        const last = this.lastTriggered.get(poi.id) ?? 0;
-        if (now - last >= this.opts.cooldownMs) entered.push({ poi, dist });
+        const last = this.lastTriggered.get(poi.id);
+        if (last === undefined || now - last >= this.opts.cooldownMs) entered.push({ poi, dist });
       } else if (was && dist >= poi.triggerRadiusM + this.opts.exitBufferM) {
         this.inside.delete(poi.id); // chi roi vung khi vuot bien + buffer -> tranh nhap nhay
       }

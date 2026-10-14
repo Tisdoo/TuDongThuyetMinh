@@ -11,8 +11,9 @@
 | Payment Service (đơn online/tiền mặt, webhook, Outbox, báo cáo) | Đã có, Payoo ở chế độ **mock** |
 | POI Service (POI, bản dịch, tour, publish `dataset.json`) | Bản khởi đầu |
 | Trang quầy nhân viên (`tools/staff`) | Đã có |
+| Web App du khách (`tools/tourist`): thanh toán, bản đồ, GPS, geofence, nghe thuyết minh | Bản đầu tiên, cần thử trên thiết bị thật |
+| Trang quản trị POI (`tools/admin`): thêm POI bằng bản đồ/GPS, nhập CSV, publish | Bản đầu tiên, cần thử trên thiết bị thật |
 | Kiểm thử tự động (`scripts/smoke.mjs`) | Đã có |
-| Frontend PWA (bản đồ, GPS, audio) | Đang làm |
 | Payoo sandbox thật | Chưa làm (`payoo.ts` chế độ `sandbox` trả 501) |
 | Pipeline dịch/TTS, Chatbot RAG, monitoring | Chưa làm (có gợi ý trong `docs/poi-suggestions/`) |
 
@@ -28,9 +29,13 @@ linhung-guide/
 │   ├── auth-service/   :4001  grant, token RS256, mã ngắn (Redis), nhân viên, audit
 │   ├── payment-service/:4002  vé, đơn hàng, Payoo (mock), tiền mặt, webhook, outbox
 │   └── poi-service/    :4003  POI, bản dịch, tour, dataset
+├── infra/nginx/web.conf      nginx phục vụ web du khách + admin, chuyển /api sang Gateway
+├── tools/tourist/index.html  Web App du khách (một file, Leaflet + Web Speech)
+├── tools/admin/index.html    trang quản trị POI (bản đồ, GPS, CSV, publish)
 ├── tools/staff/staff.html    trang quầy nhân viên
 ├── scripts/smoke.mjs         kiểm thử tự động các luồng chính
 └── docs/
+    ├── data/poi-seed.sample.csv  file CSV mẫu để nhập POI
     ├── postman/              Postman collection + environment
     └── poi-suggestions/      geofence.ts (frontend), worker.py (pipeline dịch/TTS)
 ```
@@ -164,19 +169,41 @@ docker compose exec postgres psql -U postgres -d auth_db -c "select channel, sta
 
 ## 9. Trang quầy nhân viên
 
+Docker đã phục vụ sẵn trang này (service `staff-ui`, không cần cài Node hay Python):
+
 ```powershell
 docker compose up -d
-cd tools\staff
-python -m http.server 5174
 ```
 
 Mở `http://localhost:5174/staff.html`, đăng nhập `staff1`. Trang hiện danh sách đơn tiền mặt đang chờ (tự làm mới 5 giây); chọn đơn, bấm **Xác nhận ĐÃ THU**, mã 6 ký tự hiện ra để đọc cho khách. Cổng 5174 đã được cho phép CORS trong `docker-compose.yml`.
 
+## 9b. Web App du khách và trang quản trị POI
+
+Docker phục vụ cả hai qua service `web` (nginx, cổng **5175**), `/api` được chuyển sang Gateway nên không cần cấu hình CORS và ngrok chỉ cần một đường.
+
+| Trang | Địa chỉ | Dùng để |
+|---|---|---|
+| Web App du khách | `http://localhost:5175` | Thanh toán, bản đồ, GPS, nghe thuyết minh |
+| Chế độ giả lập vị trí | `http://localhost:5175/?sim=1` | Thử geofence khi không ở chùa: bấm nút 🧪 rồi chạm lên bản đồ để "đi" |
+| Quản trị POI | `http://localhost:5175/admin/` | Thêm, sửa POI, nhập CSV, publish |
+| Quầy nhân viên | `http://localhost:5174/staff.html` | Xác nhận thu tiền mặt |
+
+Trong `.env` phải có (bản `.env.example` mới đã cập nhật):
+```
+FRONTEND_URL=http://localhost:5175
+PUBLIC_BASE_URL=http://localhost:5175
+```
+Sau khi sửa `.env`: `docker compose up -d`.
+
+**Nạp dữ liệu POI:** đăng nhập `admin` ở trang quản trị; thêm từng POI ở tab "Thêm / Sửa POI" (chạm bản đồ hoặc dùng GPS để lấy tọa độ), hoặc nhập nhiều POI ở tab "Nhập từ CSV" (mẫu: `docs/data/poi-seed.sample.csv`). Sau đó vào tab "Publish". Tọa độ trong file mẫu chỉ là minh họa, phải thay bằng tọa độ thật.
+
+Hạn chế đã biết: Web App cần Internet để tải thư viện bản đồ và ô bản đồ (chưa hỗ trợ offline); giọng đọc phụ thuộc thiết bị (nếu máy không có giọng cho ngôn ngữ đó thì chỉ hiển thị văn bản); giới hạn thử mã ngắn tính theo IP lấy từ header `X-Forwarded-For`, chưa chống giả mạo header này khi triển khai thật.
+
 ## 10. Thử trên điện thoại (ngrok)
 
-Trình duyệt chỉ cho dùng GPS trên HTTPS, và điện thoại không truy cập được `localhost` của máy tính. Sau khi frontend chạy ở cổng 5173 (có proxy `/api` sang `http://localhost:8080`):
+Trình duyệt chỉ cho dùng GPS trên HTTPS, và điện thoại không truy cập được `localhost` của máy tính. Web App du khách và trang admin đã chạy ở cổng 5175:
 
-1. `ngrok http 5173`, copy link `https://xxxx.ngrok-free.app`.
+1. `ngrok http 5175`, copy link `https://xxxx.ngrok-free.app`.
 2. Trong `.env` đặt:
    ```
    FRONTEND_URL=https://xxxx.ngrok-free.app
@@ -193,8 +220,8 @@ Mỗi lần khởi động lại ngrok, link đổi và phải cập nhật lạ
 | `INTERNAL_API_KEY` | Khóa Payment gọi nội bộ sang Auth | `change-me-internal-key` |
 | `PAYOO_MODE` | `mock` hoặc `sandbox` | `mock` |
 | `PAYOO_CHECKSUM_KEY` | Khóa ký webhook | `change-me-checksum-key` |
-| `FRONTEND_URL` | Nơi Payoo chuyển khách về sau thanh toán | `http://localhost:5173` |
-| `PUBLIC_BASE_URL` | URL công khai của Gateway (dùng cho `paymentUrl` mock) | `http://localhost:8080` |
+| `FRONTEND_URL` | Nơi Payoo chuyển khách về sau thanh toán | `http://localhost:5175` |
+| `PUBLIC_BASE_URL` | URL công khai (dùng cho `paymentUrl` mock) | `http://localhost:5175` |
 | `SEED_ADMIN_PASSWORD` | Mật khẩu admin tạo lần đầu | `Admin@12345` |
 | `SEED_DEV_ACCOUNTS` | Tạo sẵn `staff1` (dev/demo) | `true` |
 | `CORS_ORIGIN` | Nguồn được phép gọi API từ trình duyệt | `http://localhost:5173,http://localhost:5174` |
@@ -214,6 +241,9 @@ Khi triển khai thật bắt buộc đổi: `JWT_PRIVATE_KEY_PEM`, `INTERNAL_AP
 | 409 `ORDER_ALREADY_PAID` | Đơn đã thu tiền | Đúng hành vi; tạo đơn mới để thử tiếp |
 | 429 `TOO_MANY_ATTEMPTS` | Bị khóa do nhập sai nhiều lần | `docker compose exec redis redis-cli flushall` |
 | `node is not recognized` | Chưa cài Node.js, hoặc chưa mở lại PowerShell sau khi cài | Cài Node 20 LTS, đóng và mở lại PowerShell |
+| Thanh toán xong báo lỗi `localhost:5173` | `.env` còn giá trị cũ | Sửa `FRONTEND_URL` và `PUBLIC_BASE_URL` thành `http://localhost:5175`, `docker compose up -d` |
+| Bản đồ trắng, không có ô bản đồ | Máy không có Internet hoặc chặn `tile.openstreetmap.org` / `unpkg.com` | Kiểm tra mạng |
+| GPS không hoạt động trên điện thoại | Trang không chạy HTTPS | Mở bằng link ngrok `https://...` |
 | Postgres lỗi trên Mac chip M1/M2 | Image `postgis/postgis` thiếu bản arm64 | Đổi image thành `imresamu/postgis:16-3.4-bookworm` |
 
 ## 13. Quy ước làm việc nhóm
@@ -228,4 +258,4 @@ Khi triển khai thật bắt buộc đổi: `JWT_PRIVATE_KEY_PEM`, `INTERNAL_AP
 
 - Payoo sandbox thật: hoàn thiện `services/payment-service/src/services/payoo.ts` (chế độ `sandbox`); cần tài liệu sandbox của Payoo để điền định dạng request và chữ ký.
 - POI: publisher cho Outbox (sao từ payment-service), upload Blob/CDN, API `route_segments`, worker dịch và TTS (`docs/poi-suggestions/worker.py`).
-- Chatbot (Python/FastAPI), monitoring, frontend PWA hoàn chỉnh và Admin dashboard.
+- Chế độ offline (Service Worker), monitoring, nhánh Chủ địa điểm (venues, duyệt POI), giao diện hoàn thiện cho Web App và Admin.
