@@ -23,6 +23,18 @@ adminRouter.post('/payments/admin/orders/:id/confirm-cash', staffOrAdmin, ah(asy
   res.json(await orders.confirmCash(uuid(req.params.id), staffId, b.amountReceived, b.note));
 }));
 
+// Xac nhan DA NHAN tien MoMo (doi soat thu cong sau khi xem thong bao trong app MoMo)
+adminRouter.post('/payments/admin/orders/:id/confirm-momo', staffOrAdmin, ah(async (req, res) => {
+  const b = z.object({
+    amountReceived: z.number().int().positive(),
+    momoTxnId: z.string().min(4).max(100).optional(),
+    note: z.string().max(255).optional(),
+  }).parse(req.body);
+  const staffId = req.header('x-user-id');
+  if (!staffId) throw new AppError(401, 'UNAUTHORIZED');
+  res.json(await orders.confirmMomo(uuid(req.params.id), staffId, b.amountReceived, b.momoTxnId, b.note));
+}));
+
 // UC-A05: huy don dang cho
 adminRouter.post('/payments/admin/orders/:id/cancel', staffOrAdmin, ah(async (req, res) => {
   await orders.cancelOrder(uuid(req.params.id));
@@ -33,7 +45,7 @@ adminRouter.post('/payments/admin/orders/:id/cancel', staffOrAdmin, ah(async (re
 adminRouter.get('/payments/admin/orders', staffOrAdmin, ah(async (req, res) => {
   const q = z.object({
     status: z.enum(['CREATED', 'PENDING', 'PAID', 'FAILED', 'EXPIRED', 'CANCELLED']).optional(),
-    method: z.enum(['ONLINE', 'CASH']).optional(),
+    method: z.enum(['ONLINE', 'CASH', 'MOMO_QR']).optional(),
     from: z.string().datetime().optional(),
     to: z.string().datetime().optional(),
     page: z.coerce.number().int().min(1).default(1),

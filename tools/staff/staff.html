@@ -31,7 +31,7 @@
 <section id="main" class="hidden">
   <p>Đã đăng nhập: <b id="who"></b> <button id="btnLogout">Đăng xuất</button></p>
 
-  <h2>1. Đơn tiền mặt đang chờ <span class="muted">(tự làm mới mỗi 5 giây)</span></h2>
+  <h2>1. Đơn đang chờ: tiền mặt và MoMo QR <span class="muted">(tự làm mới mỗi 5 giây)</span></h2>
   <div id="pending" class="card muted">Đang tải...</div>
 
   <h2>2. Tìm đơn theo mã</h2>
@@ -88,14 +88,19 @@ function showMain() { $('loginBox').classList.add('hidden'); $('main').classList
 async function loadPending() {
   if (!token) return;
   try {
-    const { data } = await api('GET', '/payments/admin/orders?method=CASH&status=PENDING&pageSize=20');
+    const [cash, momo] = await Promise.all([
+      api('GET', '/payments/admin/orders?method=CASH&status=PENDING&pageSize=20'),
+      api('GET', '/payments/admin/orders?method=MOMO_QR&status=PENDING&pageSize=20'),
+    ]);
+    const items = [...cash.data.items, ...momo.data.items].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     const box = $('pending'); box.innerHTML = '';
-    if (!data.items?.length) { box.textContent = 'Không có đơn nào đang chờ.'; return; }
+    if (!items.length) { box.textContent = 'Không có đơn nào đang chờ.'; return; }
     const t = document.createElement('table');
-    t.innerHTML = '<tr><th>Mã đơn</th><th>Số tiền</th><th>Tạo lúc</th><th></th></tr>';
-    for (const o of data.items) {
+    t.innerHTML = '<tr><th>Mã đơn</th><th>Hình thức</th><th>Số tiền</th><th>Tạo lúc</th><th></th></tr>';
+    for (const o of items) {
       const tr = document.createElement('tr');
-      for (const v of [o.order_code, o.amount.toLocaleString('vi-VN') + ' đ', new Date(o.created_at).toLocaleTimeString('vi-VN')]) {
+      const label = o.method === 'MOMO_QR' ? 'MoMo QR' : 'Tiền mặt';
+      for (const v of [o.order_code, label, o.amount.toLocaleString('vi-VN') + ' đ', new Date(o.created_at).toLocaleTimeString('vi-VN')]) {
         const td = document.createElement('td'); td.textContent = v; tr.appendChild(td);
       }
       const td = document.createElement('td'); const b = document.createElement('button'); b.textContent = 'Chọn';
@@ -114,15 +119,32 @@ async function findOrder() {
   const box = $('orderBox'); box.classList.remove('hidden'); box.innerHTML = '';
   if (status !== 200) { currentOrder = null; box.textContent = 'Không tìm thấy đơn.'; box.className = 'card err'; return; }
   currentOrder = data; box.className = 'card';
+  const label = { CASH: 'Tiền mặt', MOMO_QR: 'MoMo QR', ONLINE: 'Online' }[data.method] || data.method;
   const info = document.createElement('div');
-  info.textContent = `Đơn ${data.order_code} | ${data.method} | ${data.status} | ${Number(data.amount).toLocaleString('vi-VN')} đ | ${data.product_name}`;
+  info.textContent = `Đơn ${data.order_code} | ${label} | ${data.status} | ${Number(data.amount).toLocaleString('vi-VN')} đ | ${data.product_name}`;
   box.appendChild(info);
-  if (data.method === 'CASH' && data.status === 'PENDING') {
-    const b = document.createElement('button'); b.className = 'primary'; b.textContent = 'Xác nhận ĐÃ THU ' + Number(data.amount).toLocaleString('vi-VN') + ' đ';
-    b.onclick = confirmCash; box.appendChild(b);
-  } else if (data.method === 'CASH' && data.status === 'PAID') {
-    const b = document.createElement('button'); b.textContent = 'Lấy / cấp lại mã'; b.onclick = fetchShortCode; box.appendChild(b);
-  } else { const n = document.createElement('div'); n.className = 'err'; n.textContent = 'Đơn này không thể xác nhận thu tiền mặt.'; box.appendChild(n); }
+  const addBtn = (text, fn, primary) => { const b = document.createElement('button'); if (primary) b.className = 'primary'; b.textContent = text; b.onclick = fn; box.appendChild(b); };
+  const addNote = (text, cls) => { const n = document.createElement('div'); n.className = cls || 'muted'; n.textContent = text; box.appendChild(n); };
+  const money = Number(data.amount).toLocaleString('vi-VN') + ' đ';
+  if (data.method === 'CASH' && data.status === 'PENDING') addBtn('Xác nhận ĐÃ THU ' + money, confirmCash, true);
+  else if (data.method === 'CASH' && data.status === 'PAID') addBtn('Lấy / cấp lại mã', fetchShortCode);
+  else if (data.method === 'MOMO_QR' && data.status === 'PENDING') {
+    addNote('Mở app MoMo, tìm giao dịch có nội dung chuyển tiền = mã đơn và đúng số tiền, rồi mới bấm xác nhận.');
+    addBtn('Xác nhận ĐÃ NHẬN ' + money + ' qua MoMo', confirmMomo, true);
+  } else if (data.method === 'MOMO_QR' && data.status === 'PAID') addNote('Đã xác nhận. Khách tự được vào ứng dụng, không cần mã.', 'ok');
+  else addNote('Đơn này không thể xác nhận thu tiền.', 'err');
+}
+
+// MoMo cá nhân không báo về server, nên nhân viên đối soát bằng tay. Mã giao dịch MoMo là duy nhất: một giao dịch không dùng cho hai đơn.
+async function confirmMomo() {
+  const txn = prompt('Nhập mã giao dịch MoMo (xem trong app MoMo, chi tiết giao dịch). Để trống nếu không có:');
+  if (txn === null) return;
+  const body = { amountReceived: Number(currentOrder.amount) };
+  if (txn.trim()) body.momoTxnId = txn.trim();
+  const { status, data } = await api('POST', `/payments/admin/orders/${currentOrder.id}/confirm-momo`, body);
+  if (status !== 200) { say('Lỗi: ' + ((data && data.error && data.error.code) || status), 'err'); return; }
+  say('Đã xác nhận nhận tiền MoMo. Khách sẽ tự được vào ứng dụng.', 'ok');
+  loadPending(); findOrder();
 }
 
 async function confirmCash() {

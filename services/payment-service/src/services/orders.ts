@@ -5,7 +5,7 @@ import { pool, tx } from '../db';
 import { enqueue } from './outbox';
 import { createPayment } from './payoo';
 
-type Method = 'ONLINE' | 'CASH';
+type Method = 'ONLINE' | 'CASH' | 'MOMO_QR';
 
 /** Goi noi bo sang Auth Service tao access_grant (PENDING). */
 async function createAuthGrant(orderId: string, channel: Method, validityHours: number): Promise<{ authCode: string | null }> {
@@ -27,7 +27,7 @@ async function createAuthGrant(orderId: string, channel: Method, validityHours: 
 async function insertOrder(method: Method, productCode: string, lang: string | undefined, ip: string) {
   const p = (await pool.query('SELECT * FROM ticket_products WHERE code=$1 AND is_active', [productCode])).rows[0];
   if (!p) throw new AppError(404, 'PRODUCT_NOT_FOUND');
-  const ttl = method === 'ONLINE' ? config.onlineOrderTtlMin : config.cashOrderTtlMin;
+  const ttl = method === 'CASH' ? config.cashOrderTtlMin : config.onlineOrderTtlMin;
   for (let i = 0; i < 5; i++) {
     try {
       const { rows } = await pool.query(
@@ -103,6 +103,55 @@ export async function startCashOrder(productCode: string, lang: string | undefin
     currency: order.currency,
     expiresAt: order.expires_at,
   };
+}
+
+// ---------- Thanh toan bang QR MoMo ----------
+// Khach quet QR MoMo cua chu du an va chuyen dung so tien, ghi noi dung = ma don.
+// Ma QR ca nhan KHONG gui thong bao ve server, nen nhan vien xem MoMo roi bam xac nhan (doi soat thu cong).
+// Khach nhan token bang authCode giong luong online (khong can nhan vien doc ma).
+export async function startMomoQrOrder(productCode: string, lang: string | undefined, ip: string) {
+  const { order, product } = await insertOrder('MOMO_QR', productCode, lang, ip);
+  try {
+    const grant = await createAuthGrant(order.id, 'ONLINE', product.validity_hours);
+    return {
+      orderCode: order.order_code,
+      amount: Number(order.amount),
+      currency: order.currency,
+      expiresAt: order.expires_at,
+      authCode: grant.authCode,
+      qr: { imageUrl: config.momo.qrUrl, accountName: config.momo.accountName, transferNote: order.order_code },
+    };
+  } catch (e) {
+    await failOrder(order.id, 'AUTH_ERROR').catch(console.error);
+    throw e;
+  }
+}
+
+/** Nhan vien xac nhan DA NHAN tien MoMo. momoTxnId (ma giao dich trong app MoMo) la UNIQUE: mot giao dich khong dung cho hai don. */
+export async function confirmMomo(orderId: string, staffId: string, amountReceived: number, momoTxnId?: string, note?: string) {
+  try {
+    return await tx(async (c: PoolClient) => {
+      const { rows } = await c.query('SELECT * FROM payment_orders WHERE id=$1 FOR UPDATE', [orderId]);
+      const o = rows[0];
+      if (!o) throw new AppError(404, 'ORDER_NOT_FOUND');
+      if (o.method !== 'MOMO_QR') throw new AppError(400, 'NOT_A_MOMO_ORDER');
+      if (o.status === 'PAID') throw new AppError(409, 'ORDER_ALREADY_PAID');
+      if (o.status !== 'PENDING') throw new AppError(409, 'ORDER_NOT_PAYABLE', `Order is ${o.status}`);
+      if (new Date(o.expires_at) < new Date()) throw new AppError(409, 'ORDER_EXPIRED');
+      if (amountReceived !== Number(o.amount)) throw new AppError(400, 'AMOUNT_MISMATCH', `Expected ${Number(o.amount)}`);
+      await c.query(
+        `INSERT INTO payment_transactions (order_id, provider, provider_txn_id, amount, status, raw_response, completed_at)
+         VALUES ($1,'MOMO_QR',$2,$3,'SUCCESS',$4, now())`,
+        [orderId, momoTxnId ?? null, amountReceived, JSON.stringify({ confirmedBy: staffId, note: note ?? null })],
+      );
+      await c.query(`UPDATE payment_orders SET status='PAID', paid_at=now(), updated_at=now() WHERE id=$1`, [orderId]);
+      await enqueue(c, 'PaymentSucceeded', orderId, { orderCode: o.order_code, channel: 'MOMO_QR' });
+      return { orderId, orderCode: o.order_code, status: 'PAID' };
+    });
+  } catch (e: any) {
+    if (e.code === '23505') throw new AppError(409, 'MOMO_TXN_ALREADY_USED', 'This MoMo transaction id was already used');
+    throw e;
+  }
 }
 
 /** Frontend co the hoi trang thai theo order_code (public, chi tra thong tin toi thieu). */

@@ -27,12 +27,13 @@ const jwks = createRemoteJWKSet(new URL(`${config.authUrl}/auth/.well-known/jwks
 // Route cong khai (khong can token). Moi route khac bat buoc Bearer JWT.
 const PUBLIC: Array<[string, RegExp]> = [
   ['GET', /^\/api\/payments\/products$/],
-  ['POST', /^\/api\/payments\/(online|cash)$/],
+  ['POST', /^\/api\/payments\/(online|cash|momo-qr)$/],
   ['GET', /^\/api\/payments\/orders\/[A-Za-z0-9]+$/],
   ['POST', /^\/api\/payments\/webhook\/payoo$/],
   ['GET', /^\/api\/payments\/mock\/payoo\/pay\/[A-Za-z0-9]+$/],
   ['POST', /^\/api\/auth\/(exchange|exchange-short)$/],
   ['POST', /^\/api\/auth\/staff\/(login|refresh|logout)$/],
+  ['POST', /^\/api\/auth\/owner\/(register|registration-status)$/],
 ];
 const isPublic = (req: Request) => PUBLIC.some(([m, re]) => m === req.method && re.test(req.path));
 
@@ -77,9 +78,9 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'api-gateway
 
 // Rate limit: chung va chat hon cho cac endpoint nhay cam (UC-S04)
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 200, standardHeaders: true, legacyHeaders: false }));
-app.use(['/api/auth/exchange', '/api/auth/exchange-short', '/api/auth/staff/login'],
+app.use(['/api/auth/exchange', '/api/auth/exchange-short', '/api/auth/staff/login', '/api/auth/owner/register', '/api/auth/owner/registration-status'],
   rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }));
-app.use(['/api/payments/online', '/api/payments/cash'],
+app.use(['/api/payments/online', '/api/payments/cash', '/api/payments/momo-qr'],
   rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false }));
 
 app.use(authenticate);

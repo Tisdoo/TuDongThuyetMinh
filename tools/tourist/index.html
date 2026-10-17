@@ -65,6 +65,7 @@ main{padding:calc(var(--bar) + 16px) 16px 24px;max-width:520px;margin:0 auto}
       <div id="priceText" class="price">...</div>
     </div>
     <button id="btnOnline" class="btn primary" data-i18n="payOnline"></button>
+    <button id="btnMomo" class="btn" data-i18n="payMomo"></button>
     <button id="btnCash" class="btn" data-i18n="payCash"></button>
     <p class="muted small" data-i18n="mockNote"></p>
   </section>
@@ -88,6 +89,19 @@ main{padding:calc(var(--bar) + 16px) 16px 24px;max-width:520px;margin:0 auto}
     <button id="btnShort" class="btn primary" data-i18n="submit"></button>
     <p id="shortMsg" class="err"></p>
     <button id="btnCashBack" class="btn link" data-i18n="back"></button>
+  </section>
+
+  <section id="screenMomo" class="hidden">
+    <h1 data-i18n="momoTitle"></h1>
+    <p data-i18n="momoStep1"></p>
+    <img id="momoQr" alt="MoMo QR" style="display:block;margin:12px auto;width:260px;max-width:80%;background:#fff;border:1px solid #e6dccd;border-radius:12px;padding:8px">
+    <p id="momoAccount" class="muted small" style="text-align:center"></p>
+    <div id="momoAmount" class="price" style="text-align:center"></div>
+    <p style="text-align:center;margin-bottom:0" data-i18n="momoNote"></p>
+    <div id="momoCode" class="bigcode"></div>
+    <p id="momoStatus" class="muted" style="text-align:center"></p>
+    <p class="muted small" data-i18n="momoHint"></p>
+    <button id="btnMomoBack" class="btn link" data-i18n="back"></button>
   </section>
 
   <section id="screenMsg" class="hidden">
@@ -118,6 +132,7 @@ main{padding:calc(var(--bar) + 16px) 16px 24px;max-width:520px;margin:0 auto}
     <p id="sheetShort" style="font-weight:600"></p>
     <p id="sheetDesc"></p>
     <p id="sheetNote" class="muted small"></p>
+    <p id="sheetAudio" class="muted small"></p>
     <div class="row">
       <button id="btnListen" class="btn primary"></button>
       <button id="btnStop" class="btn hidden"></button>
@@ -134,6 +149,7 @@ main{padding:calc(var(--bar) + 16px) 16px 24px;max-width:520px;margin:0 auto}
 const API = '/api';
 const K = { token: 'll_token', lang: 'll_lang', data: 'll_dataset' };
 const PENDING = 'll_pending_auth';
+const PENDING_MOMO = 'll_pending_momo';
 const params = new URLSearchParams(location.search);
 const SIM_ENABLED = params.get('sim') === '1';
 const TTS_LANG = { vi: 'vi-VN', en: 'en-US', 'zh-CN': 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', fr: 'fr-FR' };
@@ -162,7 +178,11 @@ const T = {
     farAway: 'Bạn đang cách chùa khoảng {km} km.', noVoice: 'Thiết bị chưa có giọng đọc cho ngôn ngữ này, hãy đọc văn bản.',
     autoOn: 'Tự động phát: bật', autoOff: 'Tự động phát: tắt', autoOnSpeech: 'Đã bật tự động thuyết minh',
     fallbackNote: 'Chưa có bản dịch, hiển thị bằng {lang}.', distAway: 'Cách bạn {m} m',
-    simOn: 'Giả lập vị trí: bật. Chạm lên bản đồ để di chuyển.', simOff: 'Giả lập vị trí: tắt', locate: 'Vị trí của tôi'
+    simOn: 'Giả lập vị trí: bật. Chạm lên bản đồ để di chuyển.', simOff: 'Giả lập vị trí: tắt', locate: 'Vị trí của tôi',
+    payMomo: 'Thanh toán MoMo (quét QR)', momoTitle: 'Thanh toán bằng MoMo',
+    momoStep1: 'Mở MoMo, quét mã QR bên dưới và chuyển đúng số tiền.', momoNote: 'Ghi nội dung chuyển tiền là:',
+    momoWaiting: 'Đang chờ nhân viên xác nhận đã nhận tiền...', momoHint: 'Sau khi chuyển, giữ nguyên màn hình này. Ứng dụng sẽ tự mở khi nhân viên xác nhận.',
+    momoExpired: 'Đơn đã hết hạn hoặc không hợp lệ.', audioPre: 'Audio tạo sẵn (Edge-TTS)', audioLocal: 'Giọng đọc của trình duyệt'
   },
   en: {
     title: 'Linh Ung Pagoda Guide', payHeading: 'Unlock the guide',
@@ -186,7 +206,11 @@ const T = {
     farAway: 'You are about {km} km from the pagoda.', noVoice: 'No voice for this language on your device, please read the text.',
     autoOn: 'Auto-play: on', autoOff: 'Auto-play: off', autoOnSpeech: 'Automatic narration enabled',
     fallbackNote: 'No translation yet, showing {lang}.', distAway: '{m} m away',
-    simOn: 'Location simulation on. Tap the map to move.', simOff: 'Location simulation off', locate: 'My location'
+    simOn: 'Location simulation on. Tap the map to move.', simOff: 'Location simulation off', locate: 'My location',
+    payMomo: 'Pay with MoMo (scan QR)', momoTitle: 'Pay with MoMo',
+    momoStep1: 'Open MoMo, scan the QR code below and transfer the exact amount.', momoNote: 'Use this as the transfer message:',
+    momoWaiting: 'Waiting for staff to confirm the payment...', momoHint: 'After transferring, keep this screen open. The app opens automatically once staff confirm.',
+    momoExpired: 'The order expired or is invalid.', audioPre: 'Pre-generated audio (Edge-TTS)', audioLocal: 'Browser voice'
   }
 };
 
@@ -205,10 +229,12 @@ const t = (key) => (T[lang] && T[lang][key]) ?? T.en[key] ?? key;
 let dataset = null, product = null, map = null, userMarker = null, accCircle = null, routeLine = null;
 let lastFix = null, watchId = null, engine = null, currentPoi = null, bannerPoi = null, bannerTimer = null;
 let autoplay = false, simOn = false, polling = false, cashPoll = null, toastTimer = null, speakTok = 0;
+let emptyMsg = '';
+let momoToken = 0;
 const markers = new Map();
 
 // ---------- Tiện ích giao diện ----------
-const SCREENS = ['screenPay', 'screenWait', 'screenCash', 'screenMsg', 'screenMap'];
+const SCREENS = ['screenPay', 'screenWait', 'screenCash', 'screenMomo', 'screenMsg', 'screenMap'];
 function show(id) {
   SCREENS.forEach((s) => $(s).classList.toggle('hidden', s !== id));
   $('screens').classList.toggle('hidden', id === 'screenMap');
@@ -258,6 +284,7 @@ function logout() { localStorage.removeItem(K.token); showPay(); }
 function saveToken(data) {
   localStorage.setItem(K.token, data.accessToken);
   sessionStorage.removeItem(PENDING);
+  sessionStorage.removeItem(PENDING_MOMO);
   enterMap();
 }
 
@@ -307,6 +334,44 @@ async function payCash() {
   } catch { showMessage(t('errTitle'), t('networkError'), t('back'), showPay); }
   finally { $('btnCash').disabled = false; }
 }
+// Thanh toán MoMo QR: khách chuyển tiền, nhân viên đối soát thủ công, app tự mở khi đơn được xác nhận.
+async function payMomo() {
+  $('btnMomo').disabled = true;
+  try {
+    const r = await api('POST', '/payments/momo-qr', { body: { productCode: (product && product.code) || 'DAY_PASS', lang } });
+    if (r.status !== 201) { showMessage(t('errTitle'), t('errPayment') + ' (' + errCode(r) + ')', t('back'), showPay); return; }
+    sessionStorage.setItem(PENDING_MOMO, JSON.stringify(r.data));
+    showMomo(r.data);
+  } catch { showMessage(t('errTitle'), t('networkError'), t('back'), showPay); }
+  finally { $('btnMomo').disabled = false; }
+}
+function showMomo(d) {
+  show('screenMomo');
+  const img = $('momoQr');
+  img.onerror = () => { if (!img.src.endsWith('/momo-qr.svg')) img.src = '/momo-qr.svg'; };
+  img.src = d.qr.imageUrl;
+  $('momoAccount').textContent = d.qr.accountName || '';
+  $('momoAmount').textContent = fmtMoney(d.amount, d.currency);
+  $('momoCode').textContent = d.qr.transferNote;
+  $('momoStatus').textContent = t('momoWaiting');
+  momoPoll(d.authCode);
+}
+async function momoPoll(authCode) {
+  const my = ++momoToken; // mỗi lần bắt đầu/hủy đổi số này để vòng lặp cũ tự dừng
+  for (let i = 0; i < 450 && my === momoToken; i++) { // khoảng 30 phút, 4 giây một lần
+    try {
+      const r = await api('POST', '/auth/exchange', { body: { authCode, lang } });
+      if (my !== momoToken) return;
+      if (r.status === 200) { momoToken++; saveToken(r.data); return; }
+      if (r.status !== 202) {
+        momoToken++; sessionStorage.removeItem(PENDING_MOMO);
+        showMessage(t('errTitle'), t('momoExpired') + ' (' + errCode(r) + ')', t('payAgain'), showPay);
+        return;
+      }
+    } catch { /* mất mạng: thử lại */ }
+    await sleep(4000);
+  }
+}
 async function submitShortCode() {
   const code = $('shortInput').value.trim();
   if (!code) return;
@@ -349,6 +414,7 @@ function handleReturn() {
 
 // ---------- Dataset (tải một lần, dùng bộ nhớ đệm khi chưa đổi phiên bản) ----------
 async function loadDataset() {
+  emptyMsg = '';
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(K.data) || 'null'); } catch { /* bỏ qua */ }
   const headers = cached && cached.version ? { 'if-none-match': '"v' + cached.version + '"' } : {};
@@ -357,7 +423,7 @@ async function loadDataset() {
     dataset = r.data;
     try { localStorage.setItem(K.data, JSON.stringify(dataset)); } catch { /* đầy bộ nhớ */ }
   } else if (r.status === 304 && cached) dataset = cached;
-  else if (r.status === 404) { dataset = null; $('mapMsg').textContent = t('noDataset'); }
+  else if (r.status === 404) { dataset = { version: 0, languages: [], categories: [], pois: [], tours: [] }; emptyMsg = t('noDataset'); }
   else if (r.status !== 401) {
     if (cached) dataset = cached; else { dataset = null; $('mapMsg').textContent = t('errTitle') + ' (' + errCode(r) + ')'; }
   }
@@ -369,7 +435,8 @@ async function enterMap() {
   if (!dataset) return;
   buildLangMenu();
   initMap(); drawPois(); startGps();
-  if (dataset.pois.length) $('mapMsg').classList.add('hidden'); else $('mapMsg').textContent = t('noPoi');
+  if (dataset.pois.length) $('mapMsg').classList.add('hidden');
+  else { $('mapMsg').textContent = emptyMsg || t('noPoi'); $('mapMsg').classList.remove('hidden'); }
   if (SIM_ENABLED) $('btnSim').classList.remove('hidden');
 }
 
@@ -496,6 +563,7 @@ function fillSheet(poi) {
   $('sheetShort').textContent = (c && c.shortDescription) || '';
   $('sheetDesc').textContent = (c && c.description) || '';
   $('sheetNote').textContent = fallback && code ? t('fallbackNote').replace('{lang}', langName(code)) : '';
+  $('sheetAudio').textContent = c && c.audioUrl ? t('audioPre') : t('audioLocal');
   const img = $('sheetThumb');
   if (poi.thumbnailUrl) { img.src = poi.thumbnailUrl; img.classList.remove('hidden'); img.onerror = () => img.classList.add('hidden'); }
   else img.classList.add('hidden');
@@ -552,11 +620,25 @@ function speak(text, code) {
   setSpeaking(true);
   return true;
 }
+const player = new Audio();
+const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+// Tầng 1: MP3 tạo sẵn từ server. Lỗi (chưa có file, mạng yếu) thì tự rơi về tầng cuối: giọng đọc của trình duyệt.
+function playAudio(url, onFail) {
+  stopSpeech();
+  const tok = ++speakTok;
+  player.onended = () => { if (tok === speakTok) setSpeaking(false); };
+  player.onerror = () => { if (tok === speakTok) onFail(); };
+  player.src = url;
+  setSpeaking(true);
+  player.play().catch(() => { if (tok === speakTok) onFail(); });
+}
 function speakPoi(poi) {
   const { c, code } = content(poi);
-  if (c) speak([c.name, c.description].filter(Boolean).join('. '), code);
+  if (!c) return;
+  const text = [c.name, c.description].filter(Boolean).join('. ');
+  if (c.audioUrl) playAudio(c.audioUrl, () => speak(text, code)); else speak(text, code);
 }
-function stopSpeech() { speakTok++; if (hasTts) speechSynthesis.cancel(); setSpeaking(false); }
+function stopSpeech() { speakTok++; player.onended = null; player.onerror = null; player.pause(); if (hasTts) speechSynthesis.cancel(); setSpeaking(false); }
 function setSpeaking(on) { $('btnListen').classList.toggle('hidden', on); $('btnStop').classList.toggle('hidden', !on); }
 
 // ---------- Ngôn ngữ ----------
@@ -582,6 +664,8 @@ function setLang(code) {
 // ---------- Sự kiện ----------
 $('btnOnline').onclick = payOnline;
 $('btnCash').onclick = payCash;
+$('btnMomo').onclick = payMomo;
+$('btnMomoBack').onclick = () => { momoToken++; sessionStorage.removeItem(PENDING_MOMO); showPay(); };
 $('btnShort').onclick = submitShortCode;
 $('shortInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitShortCode(); });
 $('btnCashBack').onclick = () => { clearInterval(cashPoll); showPay(); };
@@ -603,7 +687,7 @@ $('btnAuto').onclick = () => {
   $('btnAuto').classList.toggle('on', autoplay); renderStatic();
   toast(autoplay ? t('autoOn') : t('autoOff'));
   // Trình duyệt (nhất là iOS) chỉ cho đọc sau một thao tác chạm: đọc câu ngắn để "mở khóa"
-  if (autoplay) speak(t('autoOnSpeech'), lang);
+  if (autoplay) { player.src = SILENT; player.play().catch(() => {}); speak(t('autoOnSpeech'), lang); }
 };
 $('btnSim').onclick = () => {
   simOn = !simOn; $('btnSim').classList.toggle('on', simOn);
@@ -615,6 +699,8 @@ function boot() {
   renderStatic(); buildLangMenu();
   if (location.pathname.startsWith('/payment/return')) return handleReturn();
   if (getToken()) return enterMap();
+  const pm = sessionStorage.getItem(PENDING_MOMO);
+  if (pm) { try { return showMomo(JSON.parse(pm)); } catch { sessionStorage.removeItem(PENDING_MOMO); } }
   const pending = sessionStorage.getItem(PENDING);
   if (pending) return startPolling(pending);
   showPay();

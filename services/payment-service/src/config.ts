@@ -16,6 +16,12 @@ export const config = {
   onlineOrderTtlMin: 30,
   cashOrderTtlMin: 60,
 
+  // Thanh toan bang QR MoMo ca nhan: anh QR do chu du an cung cap, nhan vien doi soat thu cong.
+  momo: {
+    qrUrl: process.env.MOMO_QR_URL ?? '/momo-qr.svg',
+    accountName: process.env.MOMO_ACCOUNT_NAME ?? '',
+  },
+
   payoo: {
     mode: (process.env.PAYOO_MODE ?? 'mock') as 'mock' | 'sandbox',
     apiUrl: process.env.PAYOO_API_URL ?? '',

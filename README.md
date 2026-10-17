@@ -15,7 +15,10 @@
 | Trang quản trị POI (`tools/admin`): thêm POI bằng bản đồ/GPS, nhập CSV, publish | Bản đầu tiên, cần thử trên thiết bị thật |
 | Kiểm thử tự động (`scripts/smoke.mjs`) | Đã có |
 | Payoo sandbox thật | Chưa làm (`payoo.ts` chế độ `sandbox` trả 501) |
-| Pipeline dịch/TTS, Chatbot RAG, monitoring | Chưa làm (có gợi ý trong `docs/poi-suggestions/`) |
+| Dịch và audio tự động (`content-worker`) | Bản đầu tiên, cần thử với Internet |
+| Chủ quán tự đăng ký + Admin duyệt | Đã có phần đăng ký và duyệt; chủ quán gửi POI chờ duyệt chưa làm |
+
+
 
 ## 2. Cấu trúc thư mục
 
@@ -32,6 +35,7 @@ linhung-guide/
 ├── infra/nginx/web.conf      nginx phục vụ web du khách + admin, chuyển /api sang Gateway
 ├── tools/tourist/index.html  Web App du khách (một file, Leaflet + Web Speech)
 ├── tools/admin/index.html    trang quản trị POI (bản đồ, GPS, CSV, publish)
+├── services/content-worker/  worker Python: dịch tự động + audio Edge-TTS
 ├── tools/staff/staff.html    trang quầy nhân viên
 ├── scripts/smoke.mjs         kiểm thử tự động các luồng chính
 └── docs/
@@ -52,8 +56,6 @@ Chỉ **API Gateway** mở ra ngoài (cổng 8080). Các service còn lại ch�
 | Postman | Gọi API bằng giao diện | Nên có |
 | Node.js 20 LTS | Chạy `smoke.mjs`, chạy từng service để debug | Cần cho kiểm thử |
 | Python 3.11+ | Chạy trang nhân viên (`http.server`), pipeline sau này | Tùy chọn |
-| ngrok | Mở HTTPS để thử GPS trên điện thoại | Khi thử điện thoại |
-
 ## 4. Chạy hệ thống
 
 Mở Docker Desktop, chờ báo **Engine running**. Mở PowerShell **tại thư mục gốc `linhung-guide`** (nơi có `docker-compose.yml`):
@@ -78,7 +80,6 @@ Kiểm tra:
 | Xem log | `docker compose logs -f payment-service` |
 | Xóa sạch dữ liệu, làm lại từ đầu | `docker compose down -v` |
 
-Nếu đường dẫn thư mục có dấu tiếng Việt mà Docker báo lỗi build hoặc mount, chuyển project sang đường dẫn không dấu (ví dụ `D:\doan\linhung-guide`).
 
 ## 5. Tài khoản mặc định (chỉ để dev/demo)
 
@@ -198,6 +199,19 @@ Sau khi sửa `.env`: `docker compose up -d`.
 **Nạp dữ liệu POI:** đăng nhập `admin` ở trang quản trị; thêm từng POI ở tab "Thêm / Sửa POI" (chạm bản đồ hoặc dùng GPS để lấy tọa độ), hoặc nhập nhiều POI ở tab "Nhập từ CSV" (mẫu: `docs/data/poi-seed.sample.csv`). Sau đó vào tab "Publish". Tọa độ trong file mẫu chỉ là minh họa, phải thay bằng tọa độ thật.
 
 Hạn chế đã biết: Web App cần Internet để tải thư viện bản đồ và ô bản đồ (chưa hỗ trợ offline); giọng đọc phụ thuộc thiết bị (nếu máy không có giọng cho ngôn ngữ đó thì chỉ hiển thị văn bản); giới hạn thử mã ngắn tính theo IP lấy từ header `X-Forwarded-For`, chưa chống giả mạo header này khi triển khai thật.
+
+## 9c. Tính năng mới: chủ quán tự đăng ký, audio tự động
+
+| Tính năng | Cách dùng |
+|---|---|
+| Chủ quán đăng ký | Mở `http://localhost:5175/owner-register.html`, điền hồ sơ. Admin duyệt ở trang admin, tab **Duyệt chủ quán** |
+| Thanh toán MoMo QR | Nút **Thanh toán MoMo (quét QR)** trên app du khách. Nhân viên xác nhận ở trang quầy (`:5174/staff.html`) |
+| Audio tự động | Service `content-worker` tự dịch và tạo MP3. Trang admin, tab **Publish**, bấm **Dịch và tạo audio cho tất cả POI** |
+
+
+**Dịch và audio dùng dịch vụ miễn phí không cần khóa API nhưng cần Internet:** Google Translate (qua `deep-translator`) và Microsoft Edge-TTS. Lần đầu build worker mất vài phút.
+
+
 
 ## 10. Thử trên điện thoại (ngrok)
 

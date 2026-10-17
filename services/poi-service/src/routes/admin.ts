@@ -111,6 +111,7 @@ adminRouter.put('/poi/admin/pois/:id/translations/:lang', ah(async (req, res) =>
        ON CONFLICT (poi_id, lang_code) DO UPDATE SET
          name=EXCLUDED.name, short_description=EXCLUDED.short_description, description=EXCLUDED.description,
          translation_origin=EXCLUDED.translation_origin, status='TRANSLATED', content_hash=EXCLUDED.content_hash,
+         audio_url=NULL, audio_duration_sec=NULL,
          version=poi_translations.version+1, updated_at=now()`,
       [poiId, lang, b.name, b.shortDescription, b.description, isSource, isSource ? 'SOURCE' : 'HUMAN', hash]);
 
@@ -137,6 +138,39 @@ adminRouter.put('/poi/admin/pois/:id/translations/:lang', ah(async (req, res) =>
          SELECT id, 'TTS' FROM poi_translations WHERE poi_id=$1 AND lang_code=$2`, [poiId, lang]);
     }
     return { saved: true, translateJobsQueued: queued };
+  });
+  res.json(out);
+}));
+
+// Dich va tao audio cho POI DA CO san (khi vua bat worker, hoac muon tao lai). Khong ghi de ban dich tay.
+adminRouter.post('/poi/admin/regenerate', ah(async (req, res) => {
+  const b = z.object({ poiId: z.string().uuid().optional() }).parse(req.body ?? {});
+  const pid = b.poiId ?? null;
+  const out = await tx(async (c) => {
+    // 1) bao dam co dong ban dich (PENDING) cho moi ngon ngu dang bat, voi POI da co noi dung tieng Viet
+    await c.query(
+      `INSERT INTO poi_translations (poi_id, lang_code, status, translation_origin)
+       SELECT p.id, l.code, 'PENDING', 'MACHINE'
+         FROM pois p JOIN languages l ON l.is_active AND l.code <> 'vi'
+        WHERE ($1::uuid IS NULL OR p.id = $1) AND p.status <> 'ARCHIVED'
+          AND EXISTS (SELECT 1 FROM poi_translations s WHERE s.poi_id = p.id AND s.lang_code = 'vi' AND s.name <> '')
+       ON CONFLICT (poi_id, lang_code) DO NOTHING`, [pid]);
+    // 2) xep job DICH cho ban may chua dich hoac bi loi (tranh xep trung)
+    const tr = await c.query(
+      `INSERT INTO content_jobs (translation_id, job_type)
+       SELECT t.id, 'TRANSLATE' FROM poi_translations t
+        WHERE ($1::uuid IS NULL OR t.poi_id = $1) AND t.lang_code <> 'vi'
+          AND t.translation_origin = 'MACHINE' AND t.status IN ('PENDING', 'FAILED')
+          AND NOT EXISTS (SELECT 1 FROM content_jobs j WHERE j.translation_id = t.id AND j.job_type = 'TRANSLATE' AND j.status IN ('QUEUED', 'RUNNING'))
+       RETURNING id`, [pid]);
+    // 3) xep job TTS cho moi ban da co noi dung nhung chua co audio
+    const tts = await c.query(
+      `INSERT INTO content_jobs (translation_id, job_type)
+       SELECT t.id, 'TTS' FROM poi_translations t
+        WHERE ($1::uuid IS NULL OR t.poi_id = $1) AND t.status = 'TRANSLATED' AND t.audio_url IS NULL AND t.description <> ''
+          AND NOT EXISTS (SELECT 1 FROM content_jobs j WHERE j.translation_id = t.id AND j.job_type = 'TTS' AND j.status IN ('QUEUED', 'RUNNING'))
+       RETURNING id`, [pid]);
+    return { translateQueued: tr.rowCount ?? 0, ttsQueued: tts.rowCount ?? 0 };
   });
   res.json(out);
 }));

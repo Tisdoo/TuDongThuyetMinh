@@ -32,6 +32,11 @@ publicRouter.post('/payments/cash', ah(async (req, res) => {
   res.status(201).json(await orders.startCashOrder(b.productCode, b.lang, clientIp(req)));
 }));
 
+publicRouter.post('/payments/momo-qr', ah(async (req, res) => {
+  const b = OrderBody.parse(req.body ?? {});
+  res.status(201).json(await orders.startMomoQrOrder(b.productCode, b.lang, clientIp(req)));
+}));
+
 publicRouter.get('/payments/orders/:orderCode', ah(async (req, res) => {
   const code = z.string().min(4).max(12).parse(req.params.orderCode);
   res.json(await orders.getOrderStatus(code));

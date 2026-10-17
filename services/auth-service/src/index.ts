@@ -8,6 +8,7 @@ import { seedAdmin } from './seed';
 import { startConsumer } from './mq';
 import { handleEvent } from './events';
 import { expireGrants } from './services/grants';
+import { redactOldPii } from './services/owners';
 import { publicRouter } from './routes/public';
 import { staffRouter } from './routes/staff';
 import { adminRouter } from './routes/admin';
@@ -38,6 +39,8 @@ async function main() {
     process.exit(1);
   });
   setInterval(() => expireGrants().catch(console.error), 60_000); // UC-S03
+  redactOldPii().catch(console.error);
+  setInterval(() => redactOldPii().catch(console.error), 3600_000); // xoa CCCD qua han luu tru
 }
 
 main().catch((e) => {

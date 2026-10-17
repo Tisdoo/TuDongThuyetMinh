@@ -41,6 +41,7 @@ label{font-size:.88rem;color:#444}
     <button data-tab="list" class="on">Danh sách POI</button>
     <button data-tab="edit">Thêm / Sửa POI</button>
     <button data-tab="csv">Nhập từ CSV</button>
+    <button data-tab="owners">Duyệt chủ quán</button>
     <button data-tab="publish">Publish</button>
   </nav>
 
@@ -92,6 +93,15 @@ label{font-size:.88rem;color:#444}
     <pre id="csvLog" class="hidden"></pre>
   </div>
 
+  <div id="tab-owners" class="card hidden">
+    <h2>Đơn đăng ký chủ quán</h2>
+    <p class="muted">Chủ quán tự đăng ký tại <b>/owner-register.html</b>. Chỉ tài khoản ADMIN duyệt được. Duyệt thì tài khoản được kích hoạt, từ chối bắt buộc ghi lý do.</p>
+    <select id="ownerFilter" style="width:auto"><option value="PENDING">Đang chờ duyệt</option><option value="">Tất cả</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Đã từ chối</option></select>
+    <button id="btnOwners">Tải danh sách</button>
+    <table id="ownerTable"></table>
+    <div id="ownerMsg" class="muted"></div>
+  </div>
+
   <div id="tab-publish" class="card hidden">
     <h2>Publish dataset</h2>
     <p class="muted">Gộp mọi POI trạng thái PUBLISHED thành một phiên bản dataset mới. Du khách tải về sẽ thấy dữ liệu mới.</p>
@@ -99,6 +109,10 @@ label{font-size:.88rem;color:#444}
     <button id="btnVerify">Xem dataset hiện tại</button>
     <div id="pubMsg"></div>
     <pre id="pubOut" class="hidden"></pre>
+    <h2>Audio tự động (dịch và đọc)</h2>
+    <p class="muted">Worker tự dịch tiếng Việt sang các ngôn ngữ khác rồi tạo MP3 (Edge-TTS). Cần Internet. Xong hãy bấm Publish để đưa audio lên app.</p>
+    <button id="btnRegen">Dịch và tạo audio cho tất cả POI</button> <button id="btnJobs">Xem tiến độ</button>
+    <pre id="jobOut">Chưa tải tiến độ.</pre>
     <h2>Lịch sử phiên bản</h2>
     <table id="verTable"></table>
   </div>
@@ -110,6 +124,7 @@ label{font-size:.88rem;color:#444}
 'use strict';
 const API = '/api', TK = 'll_admin_token';
 let token = sessionStorage.getItem(TK) || '';
+let jobTimer = null;
 let pois = [], editingId = null, map = null, marker = null, circle = null, csvRows = [];
 const $ = (id) => document.getElementById(id);
 const CODE_RE = /^[A-Za-z0-9_-]{2,30}$/;
@@ -148,9 +163,11 @@ function enter() { $('loginBox').classList.add('hidden'); $('main').classList.re
 // ---------- Tab ----------
 function tab(name) {
   document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
-  ['list', 'edit', 'csv', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
+  ['list', 'edit', 'csv', 'owners', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
+  clearInterval(jobTimer);
   if (name === 'edit') { initMap(); setTimeout(() => map.invalidateSize(), 50); }
-  if (name === 'publish') loadVersions();
+  if (name === 'publish') { loadVersions(); loadJobs(); jobTimer = setInterval(loadJobs, 5000); }
+  if (name === 'owners') loadOwners();
   if (name === 'list') loadList();
 }
 
@@ -390,7 +407,7 @@ async function verify() {
   if (r.status !== 200) { out.textContent = 'Lỗi: ' + errOf(r); return; }
   const d = r.data;
   out.textContent = 'Phiên bản ' + d.version + ' | ' + d.pois.length + ' POI | ngôn ngữ hệ thống: ' + d.languages.map((l) => l.code).join(', ') + '\n\n' +
-    d.pois.map((p) => p.code + '  (' + p.lat + ', ' + p.lng + ', r=' + p.triggerRadiusM + 'm)  bản dịch: ' + Object.keys(p.translations).join(', ')).join('\n');
+    d.pois.map((p) => p.code + '  (' + p.lat + ', ' + p.lng + ', r=' + p.triggerRadiusM + 'm)  bản dịch: ' + Object.entries(p.translations).map(([l, t]) => l + (t.audioUrl ? '+audio' : '')).join(', ')).join('\n');
 }
 async function loadVersions() {
   const r = await api('GET', '/poi/admin/dataset-versions');
@@ -406,6 +423,59 @@ async function loadVersions() {
   });
 }
 
+// ---------- Duyệt chủ quán ----------
+async function loadOwners() {
+  const f = $('ownerFilter').value;
+  const r = await api('GET', '/auth/admin/owner-registrations' + (f ? '?status=' + f : ''));
+  const tb = $('ownerTable'); tb.innerHTML = '';
+  if (r.status === 403) { say($('ownerMsg'), 'Chỉ tài khoản ADMIN mới duyệt được đơn đăng ký.', 'err'); return; }
+  if (r.status !== 200) { say($('ownerMsg'), 'Lỗi: ' + errOf(r), 'err'); return; }
+  const h = document.createElement('tr');
+  ['Tài khoản', 'Họ tên / SĐT', 'Địa điểm', 'CCCD', 'Trạng thái', 'Ngày gửi', ''].forEach((x) => { const th = document.createElement('th'); th.textContent = x; h.appendChild(th); });
+  tb.appendChild(h);
+  r.data.forEach((o) => {
+    const tr = document.createElement('tr');
+    [o.username, o.full_name + ' / ' + o.phone, o.business_name + (o.address ? ', ' + o.address : ''), o.id_masked || '(không có)',
+     o.status + (o.admin_note ? ': ' + o.admin_note : ''), new Date(o.created_at).toLocaleString('vi-VN')]
+      .forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+    const td = document.createElement('td');
+    const btn = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; td.appendChild(b); };
+    if (o.id_masked && o.id_masked !== 'REDACTED') btn('Xem CCCD', () => revealId(o.id));
+    if (o.status === 'PENDING') { btn('Duyệt', () => reviewOwner(o.id, true)); btn('Từ chối', () => reviewOwner(o.id, false)); }
+    tr.appendChild(td); tb.appendChild(tr);
+  });
+  say($('ownerMsg'), r.data.length + ' đơn.', 'muted');
+}
+async function reviewOwner(id, approve) {
+  const note = prompt(approve ? 'Ghi chú (không bắt buộc):' : 'Lý do từ chối (bắt buộc, ít nhất 3 ký tự):');
+  if (note === null) return;
+  if (!approve && note.trim().length < 3) { alert('Cần ghi lý do từ chối.'); return; }
+  const r = await api('POST', '/auth/admin/owner-registrations/' + id + (approve ? '/approve' : '/reject'), { note: note.trim() || undefined });
+  if (r.status !== 204) alert('Lỗi: ' + errOf(r));
+  loadOwners();
+}
+async function revealId(id) {
+  if (!confirm('Việc xem số CCCD sẽ được ghi vào nhật ký. Tiếp tục?')) return;
+  const r = await api('GET', '/auth/admin/owner-registrations/' + id + '/id-number');
+  alert(r.status === 200 ? (r.data.idNumber || 'Không đọc được (đã bị xóa hoặc sai khóa mã hóa).') : 'Lỗi: ' + errOf(r));
+}
+
+// ---------- Audio tự động ----------
+async function regenerate() {
+  if (!confirm('Xếp việc dịch và tạo audio cho mọi POI chưa có? (không ghi đè bản dịch tay)')) return;
+  const r = await api('POST', '/poi/admin/regenerate', {});
+  if (r.status !== 200) { $('jobOut').textContent = 'Lỗi: ' + errOf(r); return; }
+  $('jobOut').textContent = 'Đã xếp ' + r.data.translateQueued + ' việc dịch và ' + r.data.ttsQueued + ' việc tạo audio. Đang theo dõi...';
+  setTimeout(loadJobs, 1500);
+}
+async function loadJobs() {
+  const r = await api('GET', '/poi/admin/jobs');
+  if (r.status !== 200) { $('jobOut').textContent = 'Lỗi: ' + errOf(r); return; }
+  const lines = r.data.map((x) => x.status.padEnd(8) + ' ' + x.job_type.padEnd(9) + x.n);
+  const pending = r.data.filter((x) => x.status === 'QUEUED' || x.status === 'RUNNING').reduce((a, x) => a + x.n, 0);
+  $('jobOut').textContent = (lines.length ? lines.join('\n') : 'Chưa có việc nào.') + '\n\n' + (pending ? 'Còn ' + pending + ' việc đang chạy, tự làm mới mỗi 5 giây...' : 'Không còn việc chờ. Bấm Publish để đưa audio lên app.');
+}
+
 // ---------- Sự kiện ----------
 $('btnLogin').onclick = login; $('btnLogout').onclick = logout;
 $('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
@@ -414,6 +484,7 @@ $('btnReload').onclick = loadList; $('btnGps').onclick = useMyGps; $('btnSave').
 $('btnTemplate').onclick = downloadTemplate; $('btnImport').onclick = importCsv;
 $('csvFile').onchange = (e) => { const f = e.target.files[0]; if (f) f.text().then(previewCsv); };
 $('btnPublish').onclick = publishNow; $('btnVerify').onclick = verify;
+$('btnOwners').onclick = loadOwners; $('ownerFilter').onchange = loadOwners; $('btnRegen').onclick = regenerate; $('btnJobs').onclick = loadJobs;
 if (token) { $('who').textContent = 'quản trị'; enter(); }
 })();
 </script>
