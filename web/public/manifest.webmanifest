@@ -1,0 +1,9 @@
+{
+  "name": "Thuyết minh Chùa Linh Ứng",
+  "short_name": "Linh Ứng",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#b91c1c",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
