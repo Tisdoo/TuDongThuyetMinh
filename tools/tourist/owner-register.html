@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đăng ký chủ địa điểm</title>
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:560px;margin:0 auto;padding:20px 16px 48px;background:#faf7f2;color:#222}
+h1{color:#b91c1c;font-size:1.5rem} h2{font-size:1.1rem;margin-top:32px}
+label{display:block;margin-top:12px;font-size:.9rem;color:#444}
+input,textarea{width:100%;box-sizing:border-box;padding:10px;font:inherit;border:1px solid #bbb;border-radius:8px;margin-top:4px}
+textarea{min-height:70px}
+button{margin-top:16px;padding:12px 18px;font:inherit;border:0;border-radius:8px;background:#b91c1c;color:#fff;cursor:pointer}
+button.alt{background:#fff;color:#b91c1c;border:1px solid #b91c1c}
+.muted{color:#666;font-size:.9rem} .err{color:#b91c1c} .ok{color:#15803d}
+.card{background:#fff;border-radius:12px;padding:16px;margin:16px 0;box-shadow:0 1px 4px #0001}
+</style>
+</head>
+<body>
+<h1>Đăng ký chủ địa điểm</h1>
+<p class="muted">Điền thông tin để đăng ký. Quản trị viên sẽ xem xét hồ sơ, và bạn chỉ đăng nhập được sau khi hồ sơ được duyệt.</p>
+
+<div class="card">
+  <label>Tên đăng nhập (chữ, số, _ . -)<input id="username" autocomplete="username"></label>
+  <label>Mật khẩu (từ 8 ký tự)<input id="password" type="password" autocomplete="new-password"></label>
+  <label>Nhập lại mật khẩu<input id="password2" type="password" autocomplete="new-password"></label>
+  <label>Họ và tên<input id="fullName"></label>
+  <label>Số điện thoại (9 đến 11 số)<input id="phone" inputmode="numeric"></label>
+  <label>Email (không bắt buộc)<input id="email" type="email"></label>
+  <label>Tên địa điểm / quán<input id="businessName"></label>
+  <label>Địa chỉ (không bắt buộc)<input id="address"></label>
+  <label>Ghi chú cho quản trị viên (không bắt buộc)<textarea id="note"></textarea></label>
+  <label>Số CCCD (không bắt buộc, 9 hoặc 12 số)<input id="idNumber" inputmode="numeric"></label>
+  <p class="muted">CCCD được mã hóa khi lưu, chỉ quản trị viên xem được khi duyệt và mọi lần xem đều được ghi nhật ký. Dữ liệu tự xóa sau 180 ngày kể từ khi hồ sơ được xử lý.</p>
+  <label style="display:flex;gap:8px;align-items:flex-start"><input id="consent" type="checkbox" style="width:auto;margin-top:4px"> Tôi đồng ý cho lưu trữ thông tin trên phục vụ việc xét duyệt (bắt buộc nếu nhập CCCD).</label>
+  <button id="btnRegister">Gửi đăng ký</button>
+  <div id="regMsg"></div>
+</div>
+
+<h2>Kiểm tra trạng thái hồ sơ</h2>
+<div class="card">
+  <label>Tên đăng nhập<input id="st_user"></label>
+  <label>Mật khẩu<input id="st_pass" type="password"></label>
+  <button id="btnStatus" class="alt">Kiểm tra</button>
+  <div id="stMsg"></div>
+</div>
+
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const say = (el, text, cls) => { el.textContent = text; el.className = cls || ''; };
+const ERR = {
+  USERNAME_OR_EMAIL_EXISTS: 'Tên đăng nhập hoặc email đã được dùng.',
+  VALIDATION_ERROR: 'Thông tin chưa hợp lệ, hãy kiểm tra lại các ô.',
+  INVALID_CREDENTIALS: 'Sai tên đăng nhập hoặc mật khẩu.',
+};
+async function post(path, body) {
+  const res = await fetch('/api' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  let data = null; try { data = await res.json(); } catch {}
+  return { status: res.status, data };
+}
+const code = (r) => (r.data && r.data.error && r.data.error.code) || ('HTTP ' + r.status);
+const val = (id) => $(id).value.trim();
+
+$('btnRegister').onclick = async () => {
+  const msg = $('regMsg'); say(msg, '', '');
+  if (val('password') !== $('password2').value) { say(msg, 'Hai mật khẩu không khớp.', 'err'); return; }
+  if (val('idNumber') && !$('consent').checked) { say(msg, 'Hãy tích đồng ý lưu trữ nếu bạn nhập CCCD.', 'err'); return; }
+  const body = { username: val('username'), password: $('password').value, fullName: val('fullName'), phone: val('phone'), businessName: val('businessName') };
+  for (const k of ['email', 'address', 'note', 'idNumber']) if (val(k)) body[k] = val(k);
+  $('btnRegister').disabled = true;
+  try {
+    const r = await post('/auth/owner/register', body);
+    if (r.status === 201) say(msg, 'Đã gửi đăng ký. Hãy chờ quản trị viên duyệt, rồi quay lại mục "Kiểm tra trạng thái" bên dưới.', 'ok');
+    else say(msg, ERR[code(r)] || ('Lỗi: ' + code(r)), 'err');
+  } catch { say(msg, 'Không kết nối được máy chủ.', 'err'); }
+  finally { $('btnRegister').disabled = false; }
+};
+
+$('btnStatus').onclick = async () => {
+  const msg = $('stMsg'); say(msg, '', '');
+  try {
+    const r = await post('/auth/owner/registration-status', { username: val('st_user'), password: $('st_pass').value });
+    if (r.status !== 200) { say(msg, ERR[code(r)] || ('Lỗi: ' + code(r)), 'err'); return; }
+    const d = r.data;
+    const text = { PENDING: 'Đang chờ quản trị viên duyệt.', APPROVED: 'Hồ sơ đã được duyệt, tài khoản đã được kích hoạt.', REJECTED: 'Hồ sơ bị từ chối.' }[d.status] || d.status;
+    say(msg, text + (d.adminNote ? ' Ghi chú: ' + d.adminNote : ''), d.status === 'APPROVED' ? 'ok' : d.status === 'REJECTED' ? 'err' : '');
+  } catch { say(msg, 'Không kết nối được máy chủ.', 'err'); }
+};
+})();
+</script>
+</body>
+</html>

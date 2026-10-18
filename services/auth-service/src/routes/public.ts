@@ -4,6 +4,7 @@ import { ah, clientIp } from '../common';
 import { getPublicJwk } from '../keys';
 import { exchangeAuthCode, exchangeShortCode } from '../services/grants';
 import * as staff from '../services/staff';
+import { ownerRegistrationStatus, registerOwner } from '../services/owners';
 
 export const publicRouter = Router();
 
@@ -49,4 +50,26 @@ publicRouter.post('/auth/staff/logout', ah(async (req, res) => {
   const b = z.object({ refreshToken: z.string().min(20).max(200) }).parse(req.body);
   await staff.logout(b.refreshToken);
   res.status(204).end();
+}));
+
+// ---------- Chu quan tu dang ky ----------
+const OwnerRegister = z.object({
+  username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_.-]+$/),
+  password: z.string().min(8).max(100),
+  fullName: z.string().min(2).max(100),
+  phone: z.string().regex(/^[0-9]{9,11}$/),
+  email: z.string().email().max(150).optional(),
+  businessName: z.string().min(2).max(150),
+  address: z.string().max(255).optional(),
+  note: z.string().max(500).optional(),
+  idNumber: z.string().regex(/^([0-9]{9}|[0-9]{12})$/).optional(),
+});
+
+publicRouter.post('/auth/owner/register', ah(async (req, res) => {
+  res.status(201).json(await registerOwner(OwnerRegister.parse(req.body), clientIp(req)));
+}));
+
+publicRouter.post('/auth/owner/registration-status', ah(async (req, res) => {
+  const b = z.object({ username: z.string().min(1).max(50), password: z.string().min(1).max(100) }).parse(req.body);
+  res.json(await ownerRegistrationStatus(b.username, b.password));
 }));

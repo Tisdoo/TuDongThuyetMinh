@@ -1,5 +1,5 @@
 import express from 'express';
-import { config } from './config';
+import { assertConfig, config } from './config';
 import { errorHandler } from './common';
 import { pool } from './db';
 import { runMigrations } from './migrate';
@@ -7,8 +7,10 @@ import { startOutboxPublisher } from './services/outbox';
 import { expireOrders } from './services/orders';
 import { publicRouter } from './routes/public';
 import { adminRouter } from './routes/admin';
+import { vnpayRouter } from './routes/vnpay';
 
 async function main() {
+  assertConfig();
   await runMigrations();
 
   const app = express();
@@ -20,13 +22,14 @@ async function main() {
   }));
   app.get('/health', async (_req, res) => {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', service: 'payment-service', payooMode: config.payoo.mode });
+    res.json({ status: 'ok', service: 'payment-service', onlineProvider: config.onlineProvider, payooMode: config.payoo.mode });
   });
   app.use(publicRouter);
+  app.use(vnpayRouter);
   app.use(adminRouter);
   app.use(errorHandler);
 
-  app.listen(config.port, () => console.log(`[payment-service] listening on :${config.port} (payoo=${config.payoo.mode})`));
+  app.listen(config.port, () => console.log(`[payment-service] listening on :${config.port} (online=${config.onlineProvider}, payoo=${config.payoo.mode})`));
 
   startOutboxPublisher();
   setInterval(() => expireOrders().catch(console.error), 60_000);

@@ -23,4 +23,11 @@ export const config = {
   seedAdminUsername: process.env.SEED_ADMIN_USERNAME ?? 'admin',
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'Admin@12345',
   isProd: process.env.NODE_ENV === 'production',
+  // Khoa ma hoa du lieu nhay cam (CCCD). Production: BAT BUOC dat PII_KEY rieng, dai va ngau nhien.
+  piiKey: process.env.PII_KEY ?? 'dev-pii-key-change-me',
+  piiRetentionDays: 180,
+  // Docker dat NODE_ENV=production nen can bat co nay de tao staff1 khi dev/demo. Production that: dat false.
+  seedDevAccounts: process.env.SEED_DEV_ACCOUNTS
+    ? process.env.SEED_DEV_ACCOUNTS === 'true'
+    : process.env.NODE_ENV !== 'production',
 };

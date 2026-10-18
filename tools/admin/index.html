@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản trị POI - Chùa Linh Ứng</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+body{font-family:system-ui,sans-serif;max-width:960px;margin:16px auto;padding:0 12px;color:#222}
+h1{font-size:1.3rem} h2{font-size:1.05rem;margin:18px 0 6px}
+input,select,textarea,button{font:inherit;padding:7px 9px;margin:3px 0}
+input,select,textarea{width:100%;box-sizing:border-box}
+textarea{min-height:70px}
+button{cursor:pointer;width:auto} .primary{background:#b91c1c;color:#fff;border:0;border-radius:6px}
+nav button{border:1px solid #ccc;background:#fff;border-radius:6px 6px 0 0;margin-right:4px}
+nav button.on{background:#b91c1c;color:#fff;border-color:#b91c1c}
+.card{border:1px solid #ddd;border-radius:8px;padding:12px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+table{border-collapse:collapse;width:100%;font-size:.92rem} td,th{border-bottom:1px solid #eee;padding:6px;text-align:left;vertical-align:top}
+.muted{color:#666;font-size:.9rem} .err{color:#b91c1c} .ok{color:#15803d}
+.hidden{display:none!important}
+#pickMap{height:340px;border-radius:8px;margin:8px 0}
+pre{background:#f6f6f6;padding:8px;border-radius:6px;overflow:auto;max-height:260px;font-size:.85rem}
+label{font-size:.88rem;color:#444}
+</style>
+</head>
+<body>
+<h1>Quản trị POI - Chùa Linh Ứng</h1>
+
+<section id="loginBox" class="card">
+  <b>Đăng nhập (Admin hoặc Biên tập nội dung)</b>
+  <input id="user" placeholder="Tên đăng nhập" value="admin">
+  <input id="pass" type="password" placeholder="Mật khẩu" value="Admin@12345">
+  <button id="btnLogin" class="primary">Đăng nhập</button>
+  <div id="loginMsg" class="err"></div>
+</section>
+
+<section id="main" class="hidden">
+  <p>Đã đăng nhập: <b id="who"></b> <button id="btnLogout">Đăng xuất</button></p>
+  <nav>
+    <button data-tab="list" class="on">Danh sách POI</button>
+    <button data-tab="edit">Thêm / Sửa POI</button>
+    <button data-tab="csv">Nhập từ CSV</button>
+    <button data-tab="owners">Duyệt chủ quán</button>
+    <button data-tab="publish">Publish</button>
+  </nav>
+
+  <div id="tab-list" class="card">
+    <button id="btnReload">Làm mới</button>
+    <table id="poiTable"></table>
+    <div id="listMsg" class="muted"></div>
+  </div>
+
+  <div id="tab-edit" class="card hidden">
+    <h2 id="editTitle">Thêm POI mới</h2>
+    <div class="grid">
+      <div><label>Mã POI (chữ, số, _ -)</label><input id="f_code" placeholder="VD: TUONG_PHAT_BA"></div>
+      <div><label>Loại</label>
+        <select id="f_cat"><option value="1">Tượng</option><option value="2">Chánh điện / công trình</option><option value="3">Tiện ích</option></select></div>
+      <div><label>Bán kính kích hoạt (m)</label><input id="f_radius" type="number" value="25" min="5" max="200"></div>
+      <div><label>Ưu tiên (số lớn = ưu tiên)</label><input id="f_priority" type="number" value="0"></div>
+      <div><label>Thứ tự hiển thị</label><input id="f_order" type="number" value="0"></div>
+      <div><label>Trạng thái</label><select id="f_status"><option>DRAFT</option><option>PUBLISHED</option></select></div>
+    </div>
+    <h2>Vị trí</h2>
+    <div class="grid">
+      <div><label>Vĩ độ (lat)</label><input id="f_lat" type="number" step="any"></div>
+      <div><label>Kinh độ (lng)</label><input id="f_lng" type="number" step="any"></div>
+      <div style="align-self:end"><button id="btnGps">Dùng vị trí GPS của tôi</button></div>
+    </div>
+    <div id="gpsMsg" class="muted">Chạm lên bản đồ để chọn vị trí, hoặc đứng tại điểm đó và bấm nút GPS (cần mở trang bằng HTTPS, ví dụ qua ngrok).</div>
+    <div id="pickMap"></div>
+    <h2>Nội dung tiếng Việt (bắt buộc)</h2>
+    <label>Tên</label><input id="vi_name">
+    <label>Mô tả ngắn</label><input id="vi_short">
+    <label>Mô tả đầy đủ (nên 40 đến 80 từ, câu ngắn để giọng đọc nghe rõ)</label><textarea id="vi_desc"></textarea>
+    <h2>Bản dịch tiếng Anh (nên có)</h2>
+    <label>Name</label><input id="en_name">
+    <label>Short description</label><input id="en_short">
+    <label>Description</label><textarea id="en_desc"></textarea>
+    <label>Ảnh thumbnail (URL, tùy chọn)</label><input id="f_thumb" placeholder="https://...">
+    <p><button id="btnSave" class="primary">Lưu POI</button> <button id="btnNew">Làm mới form</button></p>
+    <div id="saveMsg"></div>
+  </div>
+
+  <div id="tab-csv" class="card hidden">
+    <h2>Nhập nhiều POI từ file CSV</h2>
+    <p class="muted">Cột: code, name_vi, short_vi, desc_vi, name_en, short_en, desc_en, lat, lng, radius, category (1 Tượng, 2 Chánh điện, 3 Tiện ích), priority, order, status. File lưu UTF-8; dấu phân cách dấu phẩy hoặc chấm phẩy đều được. POI đã có mã trùng sẽ được cập nhật.</p>
+    <button id="btnTemplate">Tải file CSV mẫu</button>
+    <input id="csvFile" type="file" accept=".csv,text/csv">
+    <div id="csvPreview"></div>
+    <button id="btnImport" class="primary hidden">Nhập các dòng hợp lệ</button>
+    <pre id="csvLog" class="hidden"></pre>
+  </div>
+
+  <div id="tab-owners" class="card hidden">
+    <h2>Đơn đăng ký chủ quán</h2>
+    <p class="muted">Chủ quán tự đăng ký tại <b>/owner-register.html</b>. Chỉ tài khoản ADMIN duyệt được. Duyệt thì tài khoản được kích hoạt, từ chối bắt buộc ghi lý do.</p>
+    <select id="ownerFilter" style="width:auto"><option value="PENDING">Đang chờ duyệt</option><option value="">Tất cả</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Đã từ chối</option></select>
+    <button id="btnOwners">Tải danh sách</button>
+    <table id="ownerTable"></table>
+    <div id="ownerMsg" class="muted"></div>
+  </div>
+
+  <div id="tab-publish" class="card hidden">
+    <h2>Publish dataset</h2>
+    <p class="muted">Gộp mọi POI trạng thái PUBLISHED thành một phiên bản dataset mới. Du khách tải về sẽ thấy dữ liệu mới.</p>
+    <button id="btnPublish" class="primary">Publish ngay</button>
+    <button id="btnVerify">Xem dataset hiện tại</button>
+    <div id="pubMsg"></div>
+    <pre id="pubOut" class="hidden"></pre>
+    <h2>Audio tự động (dịch và đọc)</h2>
+    <p class="muted">Worker tự dịch tiếng Việt sang các ngôn ngữ khác rồi tạo MP3 (Edge-TTS). Cần Internet. Xong hãy bấm Publish để đưa audio lên app.</p>
+    <button id="btnRegen">Dịch và tạo audio cho tất cả POI</button> <button id="btnJobs">Xem tiến độ</button>
+    <pre id="jobOut">Chưa tải tiến độ.</pre>
+    <h2>Lịch sử phiên bản</h2>
+    <table id="verTable"></table>
+  </div>
+</section>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+const API = '/api', TK = 'll_admin_token';
+let token = sessionStorage.getItem(TK) || '';
+let jobTimer = null;
+let pois = [], editingId = null, map = null, marker = null, circle = null, csvRows = [];
+const $ = (id) => document.getElementById(id);
+const CODE_RE = /^[A-Za-z0-9_-]{2,30}$/;
+
+async function api(method, path, body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: 'Bearer ' + token } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = null; try { data = await res.json(); } catch { /* 204 */ }
+  if (res.status === 401 && token) logout();
+  return { status: res.status, data };
+}
+const errOf = (r) => (r.data && r.data.error && (r.data.error.code + (r.data.error.message && r.data.error.message !== r.data.error.code ? ': ' + r.data.error.message : ''))) || ('HTTP ' + r.status);
+const num = (v, d) => { const n = Number(v); return v === '' || Number.isNaN(n) ? d : n; };
+function say(el, text, cls) { el.textContent = text; el.className = cls || ''; }
+
+// ---------- Đăng nhập ----------
+async function login() {
+  $('loginMsg').textContent = '';
+  const r = await fetch(API + '/auth/staff/login', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: $('user').value, password: $('pass').value }),
+  });
+  const data = await r.json().catch(() => null);
+  if (!r.ok) { $('loginMsg').textContent = (data && data.error && data.error.code) || 'Lỗi đăng nhập'; return; }
+  if (!['ADMIN', 'CONTENT_EDITOR'].includes(data.role)) { $('loginMsg').textContent = 'Tài khoản này (' + data.role + ') không có quyền quản lý POI.'; return; }
+  token = data.accessToken; sessionStorage.setItem(TK, token);
+  $('who').textContent = $('user').value + ' (' + data.role + ')';
+  enter();
+}
+function logout() { token = ''; sessionStorage.removeItem(TK); $('main').classList.add('hidden'); $('loginBox').classList.remove('hidden'); }
+function enter() { $('loginBox').classList.add('hidden'); $('main').classList.remove('hidden'); loadList(); }
+
+// ---------- Tab ----------
+function tab(name) {
+  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  ['list', 'edit', 'csv', 'owners', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
+  clearInterval(jobTimer);
+  if (name === 'edit') { initMap(); setTimeout(() => map.invalidateSize(), 50); }
+  if (name === 'publish') { loadVersions(); loadJobs(); jobTimer = setInterval(loadJobs, 5000); }
+  if (name === 'owners') loadOwners();
+  if (name === 'list') loadList();
+}
+
+// ---------- Danh sách ----------
+async function loadList() {
+  const r = await api('GET', '/poi/admin/pois');
+  if (r.status !== 200) { say($('listMsg'), 'Không tải được danh sách: ' + errOf(r), 'err'); return; }
+  pois = r.data;
+  const tb = $('poiTable'); tb.innerHTML = '';
+  const head = document.createElement('tr');
+  ['Mã', 'Tên (vi)', 'Trạng thái', 'Ngôn ngữ đã dịch', 'Bán kính', ''].forEach((h) => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+  tb.appendChild(head);
+  pois.forEach((p) => {
+    const tr = document.createElement('tr');
+    [p.code, p.name || '(chưa có nội dung)', p.status, String(p.translated_langs), p.trigger_radius_m + ' m'].forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+    const td = document.createElement('td');
+    const be = document.createElement('button'); be.textContent = 'Sửa'; be.onclick = () => editPoi(p.id);
+    const ba = document.createElement('button'); ba.textContent = 'Lưu trữ'; ba.onclick = () => archivePoi(p);
+    td.appendChild(be); td.appendChild(ba); tr.appendChild(td); tb.appendChild(tr);
+  });
+  say($('listMsg'), pois.length + ' POI. Chỉ POI có trạng thái PUBLISHED mới vào dataset.', 'muted');
+  drawOthers();
+}
+async function archivePoi(p) {
+  if (!confirm('Lưu trữ POI ' + p.code + '? POI sẽ biến mất khỏi dataset sau lần publish tới.')) return;
+  const r = await api('DELETE', '/poi/admin/pois/' + p.id);
+  if (r.status !== 204) alert('Lỗi: ' + errOf(r));
+  loadList();
+}
+
+// ---------- Form + bản đồ ----------
+function initMap() {
+  if (map) return;
+  map = L.map('pickMap').setView([16.1, 108.277], 16);
+  const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
+  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
+  osm.addTo(map);
+  L.control.layers({ 'Bản đồ': osm, 'Vệ tinh': sat }).addTo(map);
+  map.on('click', (e) => setCoords(e.latlng.lat, e.latlng.lng, false));
+  ['f_lat', 'f_lng', 'f_radius'].forEach((id) => $(id).addEventListener('input', syncFromInputs));
+  drawOthers();
+}
+let others = [];
+function drawOthers() {
+  if (!map) return;
+  others.forEach((o) => o.remove()); others = [];
+  pois.forEach((p) => {
+    if (p.id === editingId) return;
+    others.push(L.circleMarker([p.latitude, p.longitude], { radius: 6, color: '#666', fillOpacity: 0.7 }).addTo(map).bindTooltip(p.code));
+  });
+}
+function setCoords(lat, lng, pan) {
+  $('f_lat').value = lat.toFixed(6); $('f_lng').value = lng.toFixed(6);
+  syncFromInputs(); if (pan) map.setView([lat, lng], 18);
+}
+function syncFromInputs() {
+  const lat = parseFloat($('f_lat').value), lng = parseFloat($('f_lng').value), r = num($('f_radius').value, 25);
+  if (Number.isNaN(lat) || Number.isNaN(lng) || !map) return;
+  if (!marker) { marker = L.marker([lat, lng], { draggable: true }).addTo(map); marker.on('dragend', () => { const p = marker.getLatLng(); setCoords(p.lat, p.lng, false); }); }
+  else marker.setLatLng([lat, lng]);
+  if (!circle) circle = L.circle([lat, lng], { radius: r, color: '#b91c1c', weight: 1, fillOpacity: 0.12 }).addTo(map);
+  else { circle.setLatLng([lat, lng]); circle.setRadius(r); }
+}
+function useMyGps() {
+  if (!('geolocation' in navigator)) { say($('gpsMsg'), 'Trình duyệt không hỗ trợ định vị.', 'err'); return; }
+  say($('gpsMsg'), 'Đang lấy vị trí, hãy đứng ngoài trời và chờ vài giây...', 'muted');
+  navigator.geolocation.getCurrentPosition((pos) => {
+    initMap(); setCoords(pos.coords.latitude, pos.coords.longitude, true);
+    const acc = Math.round(pos.coords.accuracy);
+    say($('gpsMsg'), 'Đã lấy vị trí, sai số khoảng ±' + acc + ' m.' + (acc > 20 ? ' Sai số còn lớn, hãy chờ rồi bấm lại cho tới khi dưới 20 m.' : ''), acc > 20 ? 'err' : 'ok');
+  }, (e) => say($('gpsMsg'), e.code === 1 ? 'Bạn chưa cho phép định vị (hoặc trang chưa chạy HTTPS).' : 'Không lấy được vị trí, thử lại ngoài trời.', 'err'),
+  { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+}
+function resetForm() {
+  editingId = null; $('editTitle').textContent = 'Thêm POI mới';
+  ['f_code', 'f_lat', 'f_lng', 'f_thumb', 'vi_name', 'vi_short', 'vi_desc', 'en_name', 'en_short', 'en_desc'].forEach((id) => { $(id).value = ''; });
+  $('f_code').disabled = false; $('f_cat').value = '1'; $('f_radius').value = '25'; $('f_priority').value = '0'; $('f_order').value = '0'; $('f_status').value = 'DRAFT';
+  if (marker) { marker.remove(); marker = null; } if (circle) { circle.remove(); circle = null; }
+  say($('saveMsg'), '', '');
+}
+async function editPoi(id) {
+  const r = await api('GET', '/poi/admin/pois/' + id);
+  if (r.status !== 200) { alert('Lỗi: ' + errOf(r)); return; }
+  tab('edit'); resetForm(); editingId = id;
+  const p = r.data;
+  $('editTitle').textContent = 'Sửa POI ' + p.code;
+  $('f_code').value = p.code; $('f_code').disabled = true;
+  $('f_cat').value = String(p.category_id || 1); $('f_radius').value = p.trigger_radius_m; $('f_priority').value = p.priority;
+  $('f_order').value = p.display_order; $('f_status').value = p.status === 'ARCHIVED' ? 'DRAFT' : p.status; $('f_thumb').value = p.thumbnail_url || '';
+  const tr = (l) => (p.translations || []).find((x) => x.lang_code === l) || {};
+  $('vi_name').value = tr('vi').name || ''; $('vi_short').value = tr('vi').short_description || ''; $('vi_desc').value = tr('vi').description || '';
+  $('en_name').value = tr('en').name || ''; $('en_short').value = tr('en').short_description || ''; $('en_desc').value = tr('en').description || '';
+  initMap(); setCoords(p.latitude, p.longitude, true); drawOthers();
+}
+
+// Dùng chung cho form và CSV. Thứ tự quan trọng: lưu bản gốc vi trước, rồi mới lưu bản en.
+async function upsertPoi(d) {
+  let id = d.id;
+  const body = {
+    categoryId: d.categoryId || undefined, latitude: d.latitude, longitude: d.longitude, triggerRadiusM: d.triggerRadiusM,
+    priority: d.priority, displayOrder: d.displayOrder, status: d.status, thumbnailUrl: d.thumbnailUrl || undefined,
+  };
+  if (!id) {
+    const r = await api('POST', '/poi/admin/pois', { code: d.code, ...body });
+    if (r.status !== 201) return { ok: false, error: 'Tạo POI: ' + errOf(r) };
+    id = r.data.id;
+  } else {
+    const r = await api('PUT', '/poi/admin/pois/' + id, body);
+    if (r.status !== 204) return { ok: false, error: 'Cập nhật POI: ' + errOf(r) };
+  }
+  const v = await api('PUT', '/poi/admin/pois/' + id + '/translations/vi', { name: d.vi.name, shortDescription: d.vi.short || '', description: d.vi.desc });
+  if (v.status !== 200) return { ok: false, id, error: 'Lưu tiếng Việt: ' + errOf(v) };
+  if (d.en && d.en.name && d.en.desc) {
+    const e = await api('PUT', '/poi/admin/pois/' + id + '/translations/en', { name: d.en.name, shortDescription: d.en.short || '', description: d.en.desc });
+    if (e.status !== 200) return { ok: false, id, error: 'Lưu tiếng Anh: ' + errOf(e) };
+  }
+  return { ok: true, id };
+}
+function validate(d) {
+  const e = [];
+  if (!CODE_RE.test(d.code || '')) e.push('mã POI không hợp lệ');
+  if (!(d.latitude >= -90 && d.latitude <= 90) || !(d.longitude >= -180 && d.longitude <= 180) || Number.isNaN(d.latitude) || Number.isNaN(d.longitude)) e.push('tọa độ không hợp lệ');
+  if (!(d.triggerRadiusM >= 5 && d.triggerRadiusM <= 200)) e.push('bán kính phải từ 5 đến 200');
+  if (!d.vi.name || !d.vi.desc) e.push('thiếu tên hoặc mô tả tiếng Việt');
+  return e;
+}
+async function savePoi() {
+  const d = {
+    id: editingId, code: $('f_code').value.trim(), categoryId: num($('f_cat').value, undefined),
+    latitude: parseFloat($('f_lat').value), longitude: parseFloat($('f_lng').value),
+    triggerRadiusM: num($('f_radius').value, 25), priority: num($('f_priority').value, 0), displayOrder: num($('f_order').value, 0),
+    status: $('f_status').value, thumbnailUrl: $('f_thumb').value.trim(),
+    vi: { name: $('vi_name').value.trim(), short: $('vi_short').value.trim(), desc: $('vi_desc').value.trim() },
+    en: { name: $('en_name').value.trim(), short: $('en_short').value.trim(), desc: $('en_desc').value.trim() },
+  };
+  const errs = validate(d);
+  if (errs.length) { say($('saveMsg'), 'Chưa lưu: ' + errs.join('; '), 'err'); return; }
+  say($('saveMsg'), 'Đang lưu...', 'muted');
+  const r = await upsertPoi(d);
+  if (!r.ok) { if (r.id) { editingId = r.id; $('f_code').disabled = true; } say($('saveMsg'), 'Lỗi: ' + r.error, 'err'); return; }
+  editingId = r.id; $('f_code').disabled = true;
+  say($('saveMsg'), 'Đã lưu. ' + (d.status === 'PUBLISHED' ? 'Vào tab Publish để đưa lên app.' : 'POI đang ở DRAFT, đặt PUBLISHED khi sẵn sàng.'), 'ok');
+  loadList();
+}
+
+// ---------- CSV ----------
+function parseCsv(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const first = text.split(/\r?\n/)[0];
+  const delim = first.split(';').length > first.split(',').length ? ';' : ',';
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); cur = ''; if (row.some((x) => x.trim() !== '')) rows.push(row); row = []; }
+    else cur += c;
+  }
+  row.push(cur); if (row.some((x) => x.trim() !== '')) rows.push(row);
+  return rows;
+}
+function csvToData(rows) {
+  const head = rows[0].map((h) => h.trim().toLowerCase());
+  const col = (...names) => head.findIndex((h) => names.includes(h));
+  const ix = { code: col('code'), nv: col('name_vi'), sv: col('short_vi'), dv: col('desc_vi'), ne: col('name_en'), se: col('short_en'), de: col('desc_en'),
+    lat: col('lat', 'latitude'), lng: col('lng', 'lon', 'longitude'), rad: col('radius'), cat: col('category'), pri: col('priority'), ord: col('order'), st: col('status') };
+  const g = (r, i) => (i >= 0 && r[i] !== undefined ? r[i].trim() : '');
+  return rows.slice(1).map((r) => ({
+    code: g(r, ix.code), categoryId: num(g(r, ix.cat), 1), latitude: parseFloat(g(r, ix.lat).replace(',', '.')), longitude: parseFloat(g(r, ix.lng).replace(',', '.')),
+    triggerRadiusM: num(g(r, ix.rad), 25), priority: num(g(r, ix.pri), 0), displayOrder: num(g(r, ix.ord), 0),
+    status: ['DRAFT', 'PUBLISHED'].includes(g(r, ix.st).toUpperCase()) ? g(r, ix.st).toUpperCase() : 'PUBLISHED',
+    vi: { name: g(r, ix.nv), short: g(r, ix.sv), desc: g(r, ix.dv) }, en: { name: g(r, ix.ne), short: g(r, ix.se), desc: g(r, ix.de) },
+  }));
+}
+function previewCsv(text) {
+  const rows = parseCsv(text);
+  const box = $('csvPreview'); box.innerHTML = '';
+  if (rows.length < 2) { box.textContent = 'File rỗng hoặc thiếu dòng dữ liệu.'; $('btnImport').classList.add('hidden'); return; }
+  csvRows = csvToData(rows).map((d) => ({ d, errs: validate(d) }));
+  const tb = document.createElement('table');
+  const h = document.createElement('tr');
+  ['#', 'Mã', 'Tên (vi)', 'Tọa độ', 'Trạng thái', 'Kiểm tra'].forEach((x) => { const th = document.createElement('th'); th.textContent = x; h.appendChild(th); });
+  tb.appendChild(h);
+  csvRows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    const exists = pois.some((p) => p.code === r.d.code);
+    [String(i + 1), r.d.code, r.d.vi.name, r.d.latitude + ', ' + r.d.longitude, r.d.status, r.errs.length ? 'LỖI: ' + r.errs.join('; ') : (exists ? 'Hợp lệ (cập nhật)' : 'Hợp lệ (tạo mới)')]
+      .forEach((v, k) => { const td = document.createElement('td'); td.textContent = v; if (k === 5) td.className = r.errs.length ? 'err' : 'ok'; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+  box.appendChild(tb);
+  const okCount = csvRows.filter((r) => !r.errs.length).length;
+  $('btnImport').textContent = 'Nhập ' + okCount + ' dòng hợp lệ'; $('btnImport').classList.toggle('hidden', okCount === 0);
+}
+async function importCsv() {
+  const log = $('csvLog'); log.classList.remove('hidden'); log.textContent = '';
+  $('btnImport').disabled = true;
+  await loadList();
+  let okN = 0, failN = 0;
+  for (const r of csvRows) {
+    if (r.errs.length) continue;
+    const ex = pois.find((p) => p.code === r.d.code);
+    const res = await upsertPoi({ ...r.d, id: ex ? ex.id : undefined });
+    if (res.ok) { okN++; log.textContent += 'OK    ' + r.d.code + (ex ? ' (cập nhật)' : ' (tạo mới)') + '\n'; }
+    else { failN++; log.textContent += 'LỖI  ' + r.d.code + ': ' + res.error + '\n'; }
+  }
+  log.textContent += '\nXong: ' + okN + ' thành công, ' + failN + ' lỗi. Vào tab Publish để đưa lên app.';
+  $('btnImport').disabled = false; loadList();
+}
+function downloadTemplate() {
+  const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+  const rows = [
+    ['code', 'name_vi', 'short_vi', 'desc_vi', 'name_en', 'short_en', 'desc_en', 'lat', 'lng', 'radius', 'category', 'priority', 'order', 'status'],
+    ['TUONG_PHAT_BA', 'Tượng Phật Bà Quan Âm', 'Tượng Phật Bà cao nhất Việt Nam', 'Tượng Phật Bà Quan Âm là biểu tượng của chùa. Tượng nhìn ra biển, cầu mong bình an cho ngư dân. (Nội dung mẫu, hãy thay bằng nội dung thật.)', 'Lady Buddha statue', 'The tallest Lady Buddha statue in Vietnam', 'The Lady Buddha is the symbol of the pagoda. It faces the sea and blesses the fishermen. (Sample text, replace with real content.)', '16.1000', '108.2780', '30', '1', '10', '1', 'PUBLISHED'],
+    ['CHANH_DIEN', 'Chánh điện', 'Nơi thờ chính của chùa', 'Chánh điện là nơi thờ Đức Phật. Du khách giữ yên lặng và ăn mặc lịch sự. (Nội dung mẫu.)', 'Main hall', 'The main worship hall', 'The main hall enshrines the Buddha. Please stay quiet and dress modestly. (Sample text.)', '16.0996', '108.2772', '25', '2', '5', '2', 'PUBLISHED'],
+    ['CONG_TAM_QUAN', 'Cổng tam quan', 'Cổng vào chùa', 'Cổng tam quan là lối vào chùa. (Nội dung mẫu.)', 'Triple gate', 'The pagoda entrance', 'The triple gate is the entrance to the pagoda. (Sample text.)', '16.0990', '108.2768', '25', '3', '0', '3', 'PUBLISHED'],
+  ];
+  const csv = '\uFEFF' + rows.map((r) => r.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'poi-mau.csv'; a.click();
+}
+
+// ---------- Publish ----------
+async function publishNow() {
+  if (!confirm('Publish dataset mới từ các POI đang PUBLISHED?')) return;
+  say($('pubMsg'), 'Đang build dataset...', 'muted');
+  const r = await api('POST', '/poi/admin/publish');
+  if (r.status !== 201) { say($('pubMsg'), 'Lỗi: ' + errOf(r), 'err'); return; }
+  say($('pubMsg'), 'Đã publish phiên bản ' + r.data.version + ' gồm ' + r.data.poiCount + ' POI. Checksum ' + r.data.checksum.slice(0, 12) + '...', 'ok');
+  loadVersions(); verify();
+}
+async function verify() {
+  const r = await api('GET', '/poi/dataset/latest');
+  const out = $('pubOut'); out.classList.remove('hidden');
+  if (r.status === 404) { out.textContent = 'Chưa publish lần nào, hoặc chưa có POI PUBLISHED.'; return; }
+  if (r.status !== 200) { out.textContent = 'Lỗi: ' + errOf(r); return; }
+  const d = r.data;
+  out.textContent = 'Phiên bản ' + d.version + ' | ' + d.pois.length + ' POI | ngôn ngữ hệ thống: ' + d.languages.map((l) => l.code).join(', ') + '\n\n' +
+    d.pois.map((p) => p.code + '  (' + p.lat + ', ' + p.lng + ', r=' + p.triggerRadiusM + 'm)  bản dịch: ' + Object.entries(p.translations).map(([l, t]) => l + (t.audioUrl ? '+audio' : '')).join(', ')).join('\n');
+}
+async function loadVersions() {
+  const r = await api('GET', '/poi/admin/dataset-versions');
+  const tb = $('verTable'); tb.innerHTML = '';
+  if (r.status !== 200) return;
+  const h = document.createElement('tr');
+  ['Phiên bản', 'Trạng thái', 'Số POI', 'Số ngôn ngữ', 'Thời điểm'].forEach((x) => { const th = document.createElement('th'); th.textContent = x; h.appendChild(th); });
+  tb.appendChild(h);
+  r.data.forEach((v) => {
+    const tr = document.createElement('tr');
+    [v.version_no, v.status, v.poi_count ?? '', v.language_count ?? '', v.published_at ? new Date(v.published_at).toLocaleString('vi-VN') : ''].forEach((x) => { const td = document.createElement('td'); td.textContent = String(x); tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
+
+// ---------- Duyệt chủ quán ----------
+async function loadOwners() {
+  const f = $('ownerFilter').value;
+  const r = await api('GET', '/auth/admin/owner-registrations' + (f ? '?status=' + f : ''));
+  const tb = $('ownerTable'); tb.innerHTML = '';
+  if (r.status === 403) { say($('ownerMsg'), 'Chỉ tài khoản ADMIN mới duyệt được đơn đăng ký.', 'err'); return; }
+  if (r.status !== 200) { say($('ownerMsg'), 'Lỗi: ' + errOf(r), 'err'); return; }
+  const h = document.createElement('tr');
+  ['Tài khoản', 'Họ tên / SĐT', 'Địa điểm', 'CCCD', 'Trạng thái', 'Ngày gửi', ''].forEach((x) => { const th = document.createElement('th'); th.textContent = x; h.appendChild(th); });
+  tb.appendChild(h);
+  r.data.forEach((o) => {
+    const tr = document.createElement('tr');
+    [o.username, o.full_name + ' / ' + o.phone, o.business_name + (o.address ? ', ' + o.address : ''), o.id_masked || '(không có)',
+     o.status + (o.admin_note ? ': ' + o.admin_note : ''), new Date(o.created_at).toLocaleString('vi-VN')]
+      .forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+    const td = document.createElement('td');
+    const btn = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; td.appendChild(b); };
+    if (o.id_masked && o.id_masked !== 'REDACTED') btn('Xem CCCD', () => revealId(o.id));
+    if (o.status === 'PENDING') { btn('Duyệt', () => reviewOwner(o.id, true)); btn('Từ chối', () => reviewOwner(o.id, false)); }
+    tr.appendChild(td); tb.appendChild(tr);
+  });
+  say($('ownerMsg'), r.data.length + ' đơn.', 'muted');
+}
+async function reviewOwner(id, approve) {
+  const note = prompt(approve ? 'Ghi chú (không bắt buộc):' : 'Lý do từ chối (bắt buộc, ít nhất 3 ký tự):');
+  if (note === null) return;
+  if (!approve && note.trim().length < 3) { alert('Cần ghi lý do từ chối.'); return; }
+  const r = await api('POST', '/auth/admin/owner-registrations/' + id + (approve ? '/approve' : '/reject'), { note: note.trim() || undefined });
+  if (r.status !== 204) alert('Lỗi: ' + errOf(r));
+  loadOwners();
+}
+async function revealId(id) {
+  if (!confirm('Việc xem số CCCD sẽ được ghi vào nhật ký. Tiếp tục?')) return;
+  const r = await api('GET', '/auth/admin/owner-registrations/' + id + '/id-number');
+  alert(r.status === 200 ? (r.data.idNumber || 'Không đọc được (đã bị xóa hoặc sai khóa mã hóa).') : 'Lỗi: ' + errOf(r));
+}
+
+// ---------- Audio tự động ----------
+async function regenerate() {
+  if (!confirm('Xếp việc dịch và tạo audio cho mọi POI chưa có? (không ghi đè bản dịch tay)')) return;
+  const r = await api('POST', '/poi/admin/regenerate', {});
+  if (r.status !== 200) { $('jobOut').textContent = 'Lỗi: ' + errOf(r); return; }
+  $('jobOut').textContent = 'Đã xếp ' + r.data.translateQueued + ' việc dịch và ' + r.data.ttsQueued + ' việc tạo audio. Đang theo dõi...';
+  setTimeout(loadJobs, 1500);
+}
+async function loadJobs() {
+  const r = await api('GET', '/poi/admin/jobs');
+  if (r.status !== 200) { $('jobOut').textContent = 'Lỗi: ' + errOf(r); return; }
+  const lines = r.data.map((x) => x.status.padEnd(8) + ' ' + x.job_type.padEnd(9) + x.n);
+  const pending = r.data.filter((x) => x.status === 'QUEUED' || x.status === 'RUNNING').reduce((a, x) => a + x.n, 0);
+  $('jobOut').textContent = (lines.length ? lines.join('\n') : 'Chưa có việc nào.') + '\n\n' + (pending ? 'Còn ' + pending + ' việc đang chạy, tự làm mới mỗi 5 giây...' : 'Không còn việc chờ. Bấm Publish để đưa audio lên app.');
+}
+
+// ---------- Sự kiện ----------
+$('btnLogin').onclick = login; $('btnLogout').onclick = logout;
+$('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+document.querySelectorAll('nav button').forEach((b) => { b.onclick = () => tab(b.dataset.tab); });
+$('btnReload').onclick = loadList; $('btnGps').onclick = useMyGps; $('btnSave').onclick = savePoi; $('btnNew').onclick = resetForm;
+$('btnTemplate').onclick = downloadTemplate; $('btnImport').onclick = importCsv;
+$('csvFile').onchange = (e) => { const f = e.target.files[0]; if (f) f.text().then(previewCsv); };
+$('btnPublish').onclick = publishNow; $('btnVerify').onclick = verify;
+$('btnOwners').onclick = loadOwners; $('ownerFilter').onchange = loadOwners; $('btnRegen').onclick = regenerate; $('btnJobs').onclick = loadJobs;
+if (token) { $('who').textContent = 'quản trị'; enter(); }
+})();
+</script>
+</body>
+</html>
