@@ -114,6 +114,7 @@ services:
       - ./infra/nginx/web.conf:/etc/nginx/conf.d/default.conf:ro
       - ./tools/tourist:/usr/share/nginx/html:ro
       - ./tools/admin:/usr/share/nginx/admin:ro
+      - ./tools/staff:/usr/share/nginx/staff:ro
       - audio_data:/usr/share/nginx/audio:ro
     depends_on: [api-gateway]
 

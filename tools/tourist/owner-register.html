@@ -4,21 +4,77 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Đăng ký chủ địa điểm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
 <style>
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:560px;margin:0 auto;padding:20px 16px 48px;background:#faf7f2;color:#222}
-h1{color:#b91c1c;font-size:1.5rem} h2{font-size:1.1rem;margin-top:32px}
-label{display:block;margin-top:12px;font-size:.9rem;color:#444}
-input,textarea{width:100%;box-sizing:border-box;padding:10px;font:inherit;border:1px solid #bbb;border-radius:8px;margin-top:4px}
-textarea{min-height:70px}
-button{margin-top:16px;padding:12px 18px;font:inherit;border:0;border-radius:8px;background:#b91c1c;color:#fff;cursor:pointer}
-button.alt{background:#fff;color:#b91c1c;border:1px solid #b91c1c}
-.muted{color:#666;font-size:.9rem} .err{color:#b91c1c} .ok{color:#15803d}
-.card{background:#fff;border-radius:12px;padding:16px;margin:16px 0;box-shadow:0 1px 4px #0001}
+:root{
+  --bg:#f4f3ef; --surface:#ffffff; --surface-2:#eceae4; --ink:#1c1f1e; --muted:#5d6461; --line:#dcdad3;
+  --red:#8f1d22; --red-2:#b3262d; --on-red:#ffffff; --gold:#a8741c; --sea:#17656e; --ok:#1f7a3f; --warn:#8a5a00;
+  --ok-bg:#e3f3e8; --warn-bg:#fbefd6; --err-bg:#f8e1df;
+  --shadow:0 1px 2px rgba(20,20,20,.05), 0 4px 16px rgba(20,20,20,.06);
+  --font:"Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#121514; --surface:#1a1e1d; --surface-2:#232827; --ink:#e8eae6; --muted:#a3aba7; --line:#2d3331;
+  --red:#d9545a; --red-2:#e8686e; --on-red:#1b0b0c; --gold:#d8a64e; --sea:#5fb2ba; --ok:#6fd393; --warn:#f0c35a;
+  --ok-bg:#16301f; --warn-bg:#352a10; --err-bg:#3a1a19;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3); color-scheme:dark; } }
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.55}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1000}
+.topbar .wrap{display:flex;align-items:center;gap:12px;min-height:60px}
+.topbar .logo{width:34px;height:34px;flex:none}
+.topbar b{display:block;font-weight:800;font-size:1.02rem;letter-spacing:-.2px}
+.topbar small{display:block;color:var(--muted);font-size:.76rem}
+.topbar .sp{flex:1}
+.topbar a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600}
+.topbar a:hover{color:var(--ink)}
+@media (max-width:560px){ .topbar a{display:none} }
+.wrap{max-width:var(--maxw,1000px);margin:0 auto;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px))}
+main.wrap{padding-block:22px 48px}
+h1{font-size:1.5rem;letter-spacing:-.4px;margin:0 0 6px;color:var(--ink)}
+h2{font-size:1.08rem;letter-spacing:-.2px;margin:26px 0 10px}
+a{color:var(--sea)}
+label{display:block;font-size:.86rem;color:var(--muted);font-weight:500}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:4px 0;width:100%;max-width:100%}
+input[type=checkbox]{width:auto;accent-color:var(--red)}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb, var(--sea) 45%, transparent);border-color:var(--sea)}
+textarea{min-height:80px;resize:vertical}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 14px;margin:4px 6px 4px 0;font-weight:600;width:auto}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.55;cursor:default}
+button.primary,.primary{background:var(--red);border-color:var(--red);color:var(--on-red)}
+button.primary:hover{background:var(--red-2);border-color:var(--red-2)}
+button.alt{background:var(--surface);color:var(--red);border-color:var(--red)}
+:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0;box-shadow:var(--shadow);overflow-x:auto}
+.muted{color:var(--muted)} .err{color:var(--red)} .ok{color:var(--ok)}
+.hidden{display:none!important}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th{font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:700;white-space:nowrap}
+td,th{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+tr:last-child td{border-bottom:0}
+td button{padding:6px 10px;font-size:.84rem;margin:2px 4px 2px 0}
+pre{background:var(--surface-2);color:var(--ink);padding:12px;border-radius:10px;overflow:auto;max-height:280px;font-size:.84rem}
+nav.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:4px;background:var(--surface-2);border-radius:12px;margin:10px 0 4px}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{flex:none;border:0;background:none;margin:0;padding:8px 14px;border-radius:9px;color:var(--muted);white-space:nowrap}
+nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
+.leaflet-container{font-family:var(--font)}
+
+h1{margin-top:6px}
+label{margin-top:12px}
+button{margin-top:16px}
 </style>
 </head>
 <body>
+<header class="topbar" style="--maxw:620px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M5 15.5 17 8l12 7.5h-3.2l-8.8-5.4-8.8 5.4zM8.5 16.5h17v1.8h-17zM10 19.5h2v7h-2zM16 19.5h2v7h-2zM22 19.5h2v7h-2zM7.5 27h19v1.8h-19z" fill="#f3d38e"/></svg><div><b>Đăng ký chủ địa điểm</b><small>Chùa Linh Ứng · Quán, cửa hàng quanh chùa</small></div><span class="sp"></span><a href="/owner.html">Đăng nhập</a><a href="/">Web App du khách</a></div></header>
+<main class="wrap" style="--maxw:620px">
 <h1>Đăng ký chủ địa điểm</h1>
 <p class="muted">Điền thông tin để đăng ký. Quản trị viên sẽ xem xét hồ sơ, và bạn chỉ đăng nhập được sau khi hồ sơ được duyệt.</p>
+<p class="muted">Đã được duyệt? <a href="/owner.html">Đăng nhập để thêm địa điểm (POI)</a>.</p>
 
 <div class="card">
   <label>Tên đăng nhập (chữ, số, _ . -)<input id="username" autocomplete="username"></label>
@@ -44,6 +100,8 @@ button.alt{background:#fff;color:#b91c1c;border:1px solid #b91c1c}
   <button id="btnStatus" class="alt">Kiểm tra</button>
   <div id="stMsg"></div>
 </div>
+
+</main>
 
 <script>
 (() => {
@@ -83,7 +141,7 @@ $('btnStatus').onclick = async () => {
     const r = await post('/auth/owner/registration-status', { username: val('st_user'), password: $('st_pass').value });
     if (r.status !== 200) { say(msg, ERR[code(r)] || ('Lỗi: ' + code(r)), 'err'); return; }
     const d = r.data;
-    const text = { PENDING: 'Đang chờ quản trị viên duyệt.', APPROVED: 'Hồ sơ đã được duyệt, tài khoản đã được kích hoạt.', REJECTED: 'Hồ sơ bị từ chối.' }[d.status] || d.status;
+    const text = { PENDING: 'Đang chờ quản trị viên duyệt.', APPROVED: 'Hồ sơ đã được duyệt, tài khoản đã được kích hoạt. Vào trang /owner.html để thêm địa điểm.', REJECTED: 'Hồ sơ bị từ chối.' }[d.status] || d.status;
     say(msg, text + (d.adminNote ? ' Ghi chú: ' + d.adminNote : ''), d.status === 'APPROVED' ? 'ok' : d.status === 'REJECTED' ? 'err' : '');
   } catch { say(msg, 'Không kết nối được máy chủ.', 'err'); }
 };

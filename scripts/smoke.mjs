@@ -82,6 +82,8 @@ check('webhook trùng: đơn vẫn PAID (không xử lý lại)', st.status === 
 console.log('\n[3] Phân quyền & token');
 const noTok = await call('GET', '/poi/dataset/latest');
 check('không có token -> 401', noTok.status === 401);
+const prev = await call('GET', '/poi/dataset/latest');
+check('chưa có vé: không tải được dữ liệu POI -> 401', prev.status === 401);
 const withTok = await call('GET', '/poi/dataset/latest', { token: T });
 check('token khách hợp lệ -> qua gateway (200 hoặc 404 chưa publish)', withTok.status === 200 || (withTok.status === 404 && code(withTok) === 'NO_PUBLISHED_DATASET'), `(status ${withTok.status})`);
 const tourAdmin = await call('GET', '/payments/admin/orders', { token: T });
@@ -116,8 +118,46 @@ check('admin thu hồi phiên -> 204', rev.status === 204, `(status ${rev.status
 const after = await call('GET', '/poi/dataset/latest', { token: T });
 check('token đã thu hồi -> 401 TOKEN_REVOKED', after.status === 401 && code(after) === 'TOKEN_REVOKED');
 
+console.log('\n[6] Chủ địa điểm: đăng ký -> duyệt -> gửi POI -> duyệt POI');
+const ou = 'smoke_owner_' + Date.now().toString(36);
+const OPASS = 'Owner@12345';
+const reg = await call('POST', '/auth/owner/register', { body: { username: ou, password: OPASS, fullName: 'Chu Quan Thu', phone: '0901234567', businessName: 'Quan thu nghiem' } });
+check('chủ quán đăng ký -> 201 PENDING', reg.status === 201 && reg.data?.status === 'PENDING', JSON.stringify(reg.data));
+const oEarly = await call('POST', '/auth/staff/login', { body: { username: ou, password: OPASS } });
+check('chưa duyệt: đăng nhập -> 401', oEarly.status === 401);
+const regs = await call('GET', '/auth/admin/owner-registrations?status=PENDING', { token: A });
+const myReg = regs.data?.find?.((x) => x.username === ou);
+const appr = await call('POST', `/auth/admin/owner-registrations/${myReg?.id}/approve`, { token: A, body: {} });
+check('admin duyệt hồ sơ -> 204', appr.status === 204, `(status ${appr.status})`);
+const oLogin = await call('POST', '/auth/staff/login', { body: { username: ou, password: OPASS } });
+check('đã duyệt: đăng nhập -> 200 role OWNER', oLogin.status === 200 && oLogin.data?.role === 'OWNER');
+const O = oLogin.data?.accessToken;
+const poiBody = { name: 'Quan thu nghiem', shortDescription: 'Quan nuoc gan chua', description: 'Day la noi dung gioi thieu thu nghiem cho quan nuoc gan chua Linh Ung.', latitude: 16.1001, longitude: 108.2775, triggerRadiusM: 20 };
+const op = await call('POST', '/poi/owner/pois', { token: O, body: poiBody });
+check('chủ quán tạo POI -> 201 PENDING', op.status === 201 && op.data?.reviewStatus === 'PENDING', JSON.stringify(op.data));
+const opList = await call('GET', '/poi/owner/pois', { token: O });
+check('chủ quán chỉ thấy POI của mình', opList.status === 200 && opList.data?.items?.length === 1);
+const opStaff = await call('GET', '/poi/owner/pois', { token: S });
+check('staff gọi API chủ quán -> 403', opStaff.status === 403);
+const opTourist = await call('GET', '/poi/owner/pois', { token: ex.data?.accessToken });
+check('khách gọi API chủ quán -> 403', opTourist.status === 403);
+const ownerAdmin = await call('GET', '/poi/admin/pois', { token: O });
+check('chủ quán gọi API quản trị POI -> 403', ownerAdmin.status === 403);
+const pend = await call('GET', '/poi/admin/owner-pois?review=PENDING', { token: A });
+check('admin thấy POI chờ duyệt kèm tên chủ quán', pend.status === 200 && pend.data?.some((p) => p.id === op.data?.id && p.owner_name === ou));
+const rejNoNote = await call('POST', `/poi/admin/owner-pois/${op.data?.id}/reject`, { token: A, body: {} });
+check('từ chối không ghi lý do -> 400', rejNoNote.status === 400);
+const okPoi = await call('POST', `/poi/admin/owner-pois/${op.data?.id}/approve`, { token: A, body: { note: 'OK' } });
+check('admin duyệt POI -> 200, xếp việc dịch', okPoi.status === 200 && okPoi.data?.translateQueued >= 1, JSON.stringify(okPoi.data));
+const okPoi2 = await call('POST', `/poi/admin/owner-pois/${op.data?.id}/approve`, { token: A, body: {} });
+check('duyệt lần 2 -> 409 ALREADY_REVIEWED', okPoi2.status === 409 && code(okPoi2) === 'ALREADY_REVIEWED');
+const edit = await call('PUT', `/poi/owner/pois/${op.data?.id}`, { token: O, body: { ...poiBody, name: 'Quan thu nghiem (sua)' } });
+check('chủ quán sửa POI -> quay về PENDING', edit.status === 200 && edit.data?.reviewStatus === 'PENDING');
+const del = await call('DELETE', `/poi/owner/pois/${op.data?.id}`, { token: O });
+check('chủ quán xóa POI -> 204', del.status === 204);
+
 if (process.env.BRUTE === '1') {
-  console.log('\n[6] Dò mã ngắn (sẽ khóa IP 5 phút)');
+  console.log('\n[7] Dò mã ngắn (sẽ khóa IP 5 phút)');
   let last;
   for (let i = 0; i < 6; i++) last = await call('POST', '/auth/exchange-short', { body: { shortCode: 'ZZZZZ' + i } });
   check('sau 5 lần sai -> 429 TOO_MANY_ATTEMPTS', last.status === 429 && code(last) === 'TOO_MANY_ATTEMPTS', `(status ${last.status})`);

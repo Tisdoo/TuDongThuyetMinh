@@ -3,144 +3,479 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Thuyết minh Chùa Linh Ứng</title>
+<meta name="theme-color" content="#8f1d22">
+<title>Hành trình cùng SGU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-:root{--bar:52px;--red:#b91c1c;--bg:#faf7f2;--ink:#222}
+/* Bảng màu lấy từ chùa: sơn son, đồng thếp, biển Sơn Trà, đá granite. */
+:root{
+  --bar:60px; --nav:64px;
+  --bg:#f4f3ef; --surface:#ffffff; --surface-2:#eceae4; --ink:#1c1f1e; --muted:#5d6461; --line:#dcdad3;
+  --red:#8f1d22; --red-2:#b3262d; --on-red:#ffffff; --gold:#a8741c; --sea:#17656e; --ok:#1f7a3f;
+  --shadow:0 1px 2px rgba(20,20,20,.06), 0 6px 20px rgba(20,20,20,.07);
+  --r:14px;
+  --font:"Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#121514; --surface:#1a1e1d; --surface-2:#232827; --ink:#e8eae6; --muted:#a3aba7; --line:#2d3331;
+  --red:#d9545a; --red-2:#e8686e; --on-red:#1b0b0c; --gold:#d8a64e; --sea:#5fb2ba; --ok:#6fd393;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.35); color-scheme:dark; } }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-#topbar{position:fixed;top:0;left:0;right:0;height:var(--bar);display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--red);color:#fff;z-index:1200}
-#brand{font-weight:600}
-.circle{width:36px;height:36px;border-radius:50%;border:2px solid #fff;background:transparent;color:#fff;font-weight:700;cursor:pointer}
-.menu{position:fixed;top:var(--bar);right:8px;background:#fff;border-radius:8px;box-shadow:0 4px 16px #0003;z-index:1300;min-width:170px;overflow:hidden}
-.menu button{display:block;width:100%;padding:12px 16px;border:0;background:#fff;text-align:left;font-size:1rem;cursor:pointer}
-.menu button.active{font-weight:700;background:#fef2f2}
-main{padding:calc(var(--bar) + 16px) 16px 24px;max-width:520px;margin:0 auto}
+html,body{margin:0;height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.55;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+img{max-width:100%}
 .hidden{display:none!important}
-.card{background:#fff;border-radius:12px;padding:14px;margin:14px 0;box-shadow:0 1px 4px #0001}
-.price{font-size:1.4rem;font-weight:700}
-.btn{display:block;width:100%;padding:14px;margin:10px 0;border-radius:10px;border:1px solid #ccc;background:#fff;font-size:1rem;cursor:pointer}
-.btn.primary{background:var(--red);border-color:var(--red);color:#fff}
-.btn.link{border:0;background:none;color:var(--red)}
-.btn.small{display:inline-block;width:auto;padding:8px 14px;margin:0}
-.btn:disabled{opacity:.5}
-.muted{color:#666}.small{font-size:.85rem}.err{color:var(--red)}
-.bigcode{font-size:2.4rem;letter-spacing:.2em;font-weight:700;text-align:center;margin:12px 0}
-#shortInput{width:100%;padding:12px;font-size:1.4rem;letter-spacing:.2em;text-align:center;text-transform:uppercase;border:1px solid #bbb;border-radius:8px}
-.spinner{width:40px;height:40px;border:4px solid #ddd;border-top-color:var(--red);border-radius:50%;animation:sp 1s linear infinite;margin:20px auto}
+.muted{color:var(--muted)} .small{font-size:.86rem} .err{color:var(--red)}
+:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+
+/* ---------- Thanh trên ---------- */
+.appbar{position:fixed;top:0;left:0;right:0;height:calc(var(--bar) + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) max(14px, env(safe-area-inset-right,0px)) 0 max(14px, env(safe-area-inset-left,0px));display:flex;align-items:center;gap:14px;background:var(--surface);border-bottom:1px solid var(--line);z-index:1200}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;background:none;border:0;padding:0;text-align:left}
+.brand svg{flex:none}
+.brand b{display:block;font-weight:800;font-size:1.02rem;letter-spacing:-.2px;white-space:nowrap}
+.brand small{display:block;color:var(--muted);font-size:.74rem;white-space:nowrap}
+.tabs{display:flex;gap:4px;margin-left:12px}
+.tabs button{border:0;background:none;padding:8px 14px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:600}
+.tabs button.on{background:var(--surface-2);color:var(--ink)}
+.spacer{flex:1}
+.pill{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:.86rem;white-space:nowrap}
+.pill.buy{background:var(--red);border-color:var(--red);color:var(--on-red)}
+.pill.ok{color:var(--ok)}
+.langbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:.8rem;flex:none}
+.menu{position:fixed;top:calc(var(--bar) + env(safe-area-inset-top,0px) + 6px);right:max(10px, env(safe-area-inset-right,0px));background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:1500;min-width:190px;overflow:hidden;padding:4px}
+.menu button{display:flex;justify-content:space-between;width:100%;padding:11px 14px;border:0;background:none;text-align:left;cursor:pointer;border-radius:8px}
+.menu button:hover{background:var(--surface-2)}
+.menu button.active{font-weight:700;color:var(--red)}
+
+/* ---------- Thanh dưới (điện thoại) ---------- */
+.bottomnav{display:none}
+@media (max-width:760px){
+  .tabs,.appbar .pill{display:none}
+  .bottomnav{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:0;right:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:var(--surface);border-top:1px solid var(--line);z-index:1200}
+  .bottomnav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.74rem;color:var(--muted);cursor:pointer;font-weight:600}
+  .bottomnav button svg{width:22px;height:22px}
+  .bottomnav button.on{color:var(--red)}
+}
+
+/* ---------- Khung trang ---------- */
+.view{padding-top:calc(var(--bar) + env(safe-area-inset-top,0px))}
+@media (max-width:760px){ .view{padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom,0px) + 12px)} }
+.container{max-width:1180px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px))}
+
+/* ---------- Trang chủ: chào mừng ---------- */
+.hero{position:relative;overflow:hidden;color:#fff;background:#0f3a3f}
+.hero .art{position:absolute;inset:0;width:100%;height:100%}
+.hero .photo{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .6s}
+.hero .photo.on{opacity:1}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,20,22,.15) 0%,rgba(8,20,22,.55) 60%,rgba(8,20,22,.8) 100%)}
+.hero .in{position:relative;z-index:1;padding-block:56px 30px}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#f3d38e}
+.hero .eyebrow::before{content:"";width:22px;height:2px;background:#f3d38e}
+.hero h1{font-size:clamp(2rem,6vw,3.4rem);line-height:1.08;margin:10px 0 6px;font-weight:800;letter-spacing:-1px;text-wrap:balance;max-width:16ch}
+.hero .place{font-weight:600;opacity:.9}
+.hero p.intro{max-width:56ch;opacity:.92;margin:12px 0 18px}
+.langchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.langchips button{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;font-weight:600;backdrop-filter:blur(4px)}
+.langchips button.on{background:#fff;color:#14302f;border-color:#fff}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:12px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;text-decoration:none;color:var(--ink)}
+.btn svg{width:18px;height:18px;flex:none}
+.btn.primary{background:var(--red);border-color:var(--red);color:var(--on-red)}
+.btn.primary:hover{background:var(--red-2)}
+.btn.ghost{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5);color:#fff}
+.btn.block{display:flex;width:100%}
+.btn.sm{padding:8px 12px;border-radius:10px;font-size:.88rem}
+.btn:disabled{opacity:.55;cursor:default}
+
+.status{margin-top:-22px;position:relative;z-index:2}
+.status .card{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.status .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--surface-2);color:var(--red);flex:none}
+.status .ic.ok{color:var(--ok)}
+.status .tx{flex:1;min-width:200px}
+.status .tx b{display:block}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+
+.sechead{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:30px 0 12px}
+.sechead h2{margin:0;font-size:1.35rem;letter-spacing:-.3px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:14px}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:.88rem;white-space:nowrap}
+.chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* Thẻ POI kiểu Google */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:16px;padding-bottom:32px}
+.poi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .15s, box-shadow .15s;text-align:left;padding:0}
+.poi:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.poi .img{position:relative;aspect-ratio:4/3;background:var(--surface-2)}
+.poi .img img{width:100%;height:100%;object-fit:cover;display:block}
+.poi .num{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-weight:700;font-size:.78rem;padding:3px 9px;border-radius:999px}
+.poi .play{position:absolute;right:12px;bottom:-22px;width:48px;height:48px;border-radius:50%;border:3px solid var(--surface);background:var(--red);color:var(--on-red);display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.poi .play svg{width:20px;height:20px}
+.poi.playing .play{background:var(--sea)}
+.poi .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.poi h3{margin:0;font-size:1.04rem;line-height:1.3;padding-right:46px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.8rem;color:var(--muted)}
+.cat{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.cat i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.poi p{margin:0;color:var(--muted);font-size:.9rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.poi .foot{margin-top:auto;display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--sea);font-weight:600;padding-top:6px}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+
+/* ---------- Trang bản đồ: danh sách | bản đồ ---------- */
+#viewMap{position:fixed;inset:calc(var(--bar) + env(safe-area-inset-top,0px)) 0 0 0;padding:0;display:grid;grid-template-columns:minmax(320px,400px) 1fr}
+.side{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--surface)}
+.side .top{padding:14px 14px 10px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:var(--bg)}
+.search input{border:0;background:none;outline:none;padding:11px 0;font:inherit;color:var(--ink);flex:1;min-width:0}
+.side .chips{margin:0}
+.list{overflow-y:auto;flex:1;min-height:0}
+.item{display:grid;grid-template-columns:84px 1fr auto;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;align-items:center;background:none;border-left:3px solid transparent;width:100%;text-align:left;border-top:0;border-right:0}
+.item:hover{background:var(--surface-2)}
+.item.sel{border-left-color:var(--red);background:var(--surface-2)}
+.item img{width:84px;height:64px;object-fit:cover;border-radius:10px;display:block;background:var(--surface-2)}
+.item b{display:block;line-height:1.3}
+.item .s{font-size:.82rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item .pl{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;color:var(--red)}
+.item .pl svg{width:16px;height:16px}
+.item.playing .pl{background:var(--sea);color:#fff;border-color:var(--sea)}
+.mapwrap{position:relative;min-width:0;min-height:0}
+#map{position:absolute;inset:0;background:var(--surface-2)}
+.mapmsg{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--surface);padding:8px 14px;border-radius:10px;z-index:1000;box-shadow:var(--shadow);max-width:80%;text-align:center}
+.fabs{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+.fab{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;color:var(--ink)}
+.fab svg{width:20px;height:20px}
+.fab.on{background:var(--sea);color:#fff;border-color:var(--sea)}
+.pin{width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--red);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:grid;place-items:center;transition:transform .15s}
+.pin span{transform:rotate(45deg);color:#fff;font-weight:800;font-size:.78rem}
+.pin.near{background:var(--ok)}
+.pin.sel{transform:rotate(-45deg) scale(1.25);background:var(--sea)}
+.leaflet-container{font-family:var(--font)}
+@media (max-width:760px){
+  #viewMap{bottom:calc(var(--nav) + env(safe-area-inset-bottom,0px));grid-template-columns:1fr;grid-template-rows:46% 54%}
+  .mapwrap{grid-row:1}
+  .side{grid-row:2;border-right:0;border-top:1px solid var(--line)}
+  .item{grid-template-columns:72px 1fr auto}
+  .item img{width:72px;height:56px}
+}
+
+/* ---------- Banner gần điểm ---------- */
+.banner{position:fixed;top:calc(var(--bar) + env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);width:min(560px, calc(100% - 24px));background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;z-index:1400;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
+.banner img{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none}
+.banner span{flex:1;font-size:.92rem;min-width:0}
+.x{border:0;background:none;font-size:1.5rem;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
+
+/* ---------- Chi tiết POI ---------- */
+.modal{position:fixed;inset:0;z-index:1600;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal .back{position:absolute;inset:0;background:rgba(10,14,13,.55)}
+.panel{position:relative;background:var(--surface);border-radius:18px;width:min(680px,100%);max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.gallery{position:relative;aspect-ratio:16/9;background:var(--surface-2)}
+.gallery img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery .dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:6px}
+.gallery .dots button{width:8px;height:8px;border-radius:50%;border:0;background:rgba(255,255,255,.55);padding:0;cursor:pointer}
+.gallery .dots button.on{background:#fff}
+.panel .close{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:1.4rem;cursor:pointer;z-index:2}
+.panel .content{padding:18px 20px 22px}
+.panel h2{margin:4px 0 6px;font-size:1.45rem;letter-spacing:-.3px;line-height:1.25}
+.panel .lead{font-weight:600;margin:10px 0}
+.panel .desc{white-space:pre-line}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.lock{border:1px dashed var(--gold);border-radius:12px;padding:14px;margin:12px 0;display:grid;gap:10px;background:color-mix(in srgb, var(--gold) 8%, transparent)}
+.lock b{color:var(--gold)}
+@media (max-width:760px){
+  .modal{align-items:flex-end;padding:0}
+  .panel{border-radius:18px 18px 0 0;max-height:92vh;padding-bottom:env(safe-area-inset-bottom,0px)}
+}
+
+/* ---------- Thanh phát ---------- */
+.player{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;width:min(560px, calc(100% - 24px));background:var(--ink);color:var(--bg);border-radius:16px;z-index:1450;box-shadow:0 10px 30px rgba(0,0,0,.3);overflow:hidden}
+.player .row{display:flex;align-items:center;gap:12px;padding:10px 12px}
+.player img{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none}
+.player .tt{flex:1;min-width:0}
+.player .tt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player .tt span{font-size:.78rem;opacity:.75}
+.player button{width:42px;height:42px;border-radius:50%;border:0;background:var(--bg);color:var(--ink);display:grid;place-items:center;cursor:pointer;flex:none}
+.player button.x2{background:transparent;color:var(--bg);font-size:1.4rem}
+.player button svg{width:18px;height:18px}
+.player .bar{height:3px;background:rgba(255,255,255,.18)}
+.player .bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .3s linear}
+@media (max-width:760px){ .player{bottom:calc(var(--nav) + env(safe-area-inset-bottom,0px) + 10px)} }
+
+/* ---------- Vé / thanh toán ---------- */
+#viewTicket .container{max-width:560px;padding-block:28px 40px}
+#viewTicket h1{font-size:1.6rem;letter-spacing:-.4px;margin:0 0 8px}
+.ticket{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:18px;border-radius:16px;background:linear-gradient(135deg,var(--red),#5e1216);color:#fff;margin:18px 0;position:relative;overflow:hidden}
+.ticket::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;border:18px solid rgba(255,255,255,.08)}
+.ticket .k{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.ticket .price{font-size:1.7rem;font-weight:800}
+.ticket .v{grid-column:1/-1;opacity:.85;font-size:.9rem}
+.paylist{display:grid;gap:10px}
+.payopt{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);cursor:pointer;text-align:left;width:100%}
+.payopt:hover{border-color:var(--red)}
+.payopt .pi{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--surface-2);color:var(--red);flex:none}
+.payopt .pi svg{width:22px;height:22px}
+.payopt b{display:block;color:var(--ink)}
+.payopt b + span{display:block;font-size:.84rem;color:var(--muted)}
+.payopt:disabled{opacity:.55}
+.bigcode{font-size:2.4rem;letter-spacing:.2em;font-weight:800;text-align:center;margin:12px 0;font-variant-numeric:tabular-nums}
+#shortInput{width:100%;padding:14px;font-size:1.5rem;letter-spacing:.25em;text-align:center;text-transform:uppercase;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-family:inherit}
+.spinner{width:44px;height:44px;border:4px solid var(--surface-2);border-top-color:var(--red);border-radius:50%;animation:sp 1s linear infinite;margin:24px auto}
 @keyframes sp{to{transform:rotate(360deg)}}
-#screenMap{position:fixed;top:var(--bar);left:0;right:0;bottom:0}
-#map{position:absolute;inset:0}
-.mapmsg{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#fff;padding:8px 14px;border-radius:8px;z-index:1000;box-shadow:0 2px 8px #0003;max-width:80%;text-align:center}
-.pin{width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 1px 4px #0006}
-.pin.near{background:#16a34a;transform:scale(1.2)}
-#fabs{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:8px;z-index:1000}
-.fab{width:42px;height:42px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 8px #0004;font-size:1.2rem;cursor:pointer}
-.fab.on{background:#16a34a;color:#fff}
-.banner{position:absolute;top:10px;left:62px;right:56px;background:#fff;border-radius:10px;padding:8px 10px;z-index:1050;box-shadow:0 2px 10px #0004;display:flex;align-items:center;gap:8px}
-.banner span{flex:1;font-size:.9rem}
-.sheet{position:absolute;left:0;right:0;bottom:0;max-height:58%;overflow:auto;background:#fff;border-radius:16px 16px 0 0;padding:16px;box-shadow:0 -4px 16px #0003;z-index:1100}
-.sheet h2{margin:0 36px 4px 0}
-.sheet .x{position:absolute;top:8px;right:10px}
-.x{border:0;background:none;font-size:1.6rem;cursor:pointer}
-.thumb{width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin:8px 0}
-.row{display:flex;gap:8px;margin:10px 0}
-.row .btn{margin:0}
-.toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 14px;border-radius:10px;z-index:1300;max-width:90%;text-align:center;font-size:.9rem}
+@media (prefers-reduced-motion: reduce){ .spinner{animation-duration:3s} .poi{transition:none} }
+.welcome{position:relative;overflow:hidden;color:#fff;border-radius:18px;padding:26px 22px 30px;margin-bottom:6px;
+  background:radial-gradient(120% 90% at 85% 10%, rgba(246,217,160,.55), transparent 55%), linear-gradient(160deg,#1b4f57 0%,#245a4c 55%,#0d363b 100%)}
+.welcome::after{content:"";position:absolute;left:-10%;right:-10%;bottom:-48px;height:80px;background:#0c2a2c;border-radius:50% 50% 0 0;opacity:.55}
+.welcome > *{position:relative;z-index:1}
+.welcome .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#f3d38e}
+.welcome .eyebrow::before{content:"";width:22px;height:2px;background:#f3d38e}
+#viewTicket .welcome h1{font-size:clamp(1.7rem,6vw,2.3rem);line-height:1.1;margin:8px 0 4px;color:#fff}
+.welcome .place{font-weight:600;opacity:.9}
+.welcome p{opacity:.92;margin:10px 0 14px}
+.payh{font-size:1.15rem;margin:22px 0 0}
+body.locked .tabs, body.locked .bottomnav, body.locked #ticketPill{display:none!important}
+.qr{display:block;margin:12px auto;width:260px;max-width:80%;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px}
+.center{text-align:center}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;z-index:1700;max-width:min(92%,520px);text-align:center;font-size:.9rem;box-shadow:var(--shadow)}
+@media (max-width:760px){ .toast{bottom:calc(var(--nav) + env(safe-area-inset-bottom,0px) + 80px)} }
 </style>
 </head>
 <body>
-<header id="topbar">
-  <div id="brand" data-i18n="title"></div>
-  <button id="langBtn" class="circle" aria-label="Language">VI</button>
+
+<!-- Biểu tượng dùng lại -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect fill="currentColor" x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect fill="currentColor" x="6" y="5" width="4" height="14" rx="1"/><rect fill="currentColor" x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4zM14 6v12" stroke-dasharray="0"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5" fill="currentColor"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-sim" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/></symbol>
+  <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="2" fill="currentColor"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m9 21 2.5-6 2.5 2v4M7 12l2-4 4-1 2 4 3 1M11.5 15 13 9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M3 10h18"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path fill="currentColor" d="M14 14h3v3h-3zM17 17h3v3h-3z"/></symbol>
+  <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+</svg>
+
+<header class="appbar">
+  <button class="brand" id="brandBtn" type="button">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M5 15.5 17 8l12 7.5h-3.2l-8.8-5.4-8.8 5.4zM8.5 16.5h17v1.8h-17zM10 19.5h2v7h-2zM16 19.5h2v7h-2zM22 19.5h2v7h-2zM7.5 27h19v1.8h-19z" fill="#f3d38e"/></svg>
+    <span><b data-i18n="title"></b><small data-i18n="heroPlace"></small></span>
+  </button>
+  <nav class="tabs" aria-label="Chính">
+    <button data-view="home" data-i18n="tabHome"></button>
+    <button data-view="map" data-i18n="tabMap"></button>
+  </nav>
+  <div class="spacer"></div>
+  <button id="ticketPill" class="pill buy" type="button"></button>
+  <button id="langBtn" class="langbtn" type="button" aria-label="Language">VI</button>
 </header>
 <div id="langMenu" class="menu hidden"></div>
 
-<main id="screens">
-  <section id="screenPay">
-    <h1 data-i18n="payHeading"></h1>
-    <p data-i18n="payIntro"></p>
-    <div class="card">
-      <div class="muted" data-i18n="ticketTitle"></div>
-      <div id="priceText" class="price">...</div>
+<nav class="bottomnav" aria-label="Chính">
+  <button data-view="home"><svg><use href="#i-home"/></svg><span data-i18n="tabHome"></span></button>
+  <button data-view="map"><svg><use href="#i-map"/></svg><span data-i18n="tabMap"></span></button>
+  <button data-view="ticket"><svg><use href="#i-ticket"/></svg><span data-i18n="tabTicket"></span></button>
+</nav>
+
+<!-- ================= TRANG CHỦ ================= -->
+<main id="viewHome" class="view">
+  <section class="hero">
+    <svg class="art" viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b4f57"/><stop offset=".55" stop-color="#2f7f86"/><stop offset="1" stop-color="#e9b86a"/></linearGradient>
+        <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d6670"/><stop offset="1" stop-color="#0d363b"/></linearGradient>
+      </defs>
+      <rect width="1200" height="520" fill="url(#sky)"/>
+      <circle cx="930" cy="250" r="70" fill="#f6d9a0" opacity=".8"/>
+      <path d="M0 300 C160 230 300 250 430 210 C560 170 650 230 760 200 C880 168 1000 210 1200 170 V520 H0z" fill="#245a4c"/>
+      <path d="M0 350 C200 300 340 330 520 290 C700 250 820 310 1000 280 C1100 264 1160 280 1200 270 V520 H0z" fill="#1a4639"/>
+      <rect y="380" width="1200" height="140" fill="url(#sea)"/>
+      <g fill="#0c2a2c" opacity=".9">
+        <path d="M300 300 l8 -64 h6 l8 64z"/><circle cx="311" cy="228" r="9"/>
+        <path d="M282 300 h58 v8 h-58z"/>
+      </g>
+      <g stroke="#f6d9a0" stroke-width="2" opacity=".25"><path d="M0 410 H1200"/><path d="M60 440 H520"/><path d="M700 455 H1150"/></g>
+    </svg>
+    <div id="heroPhoto" class="photo"></div>
+    <div class="in container">
+      <div class="eyebrow" data-i18n="welcome"></div>
+      <h1 data-i18n="heroTitle"></h1>
+      <div class="place" data-i18n="heroPlace"></div>
+      <p class="intro" data-i18n="heroText"></p>
+      <div class="small" style="opacity:.85;margin-bottom:8px" data-i18n="langLabel"></div>
+      <div id="heroLangs" class="langchips"></div>
+      <div class="cta">
+        <button id="heroMap" class="btn primary"><svg><use href="#i-map"/></svg><span data-i18n="explore"></span></button>
+      </div>
     </div>
-    <button id="btnOnline" class="btn primary" data-i18n="payOnline"></button>
-    <button id="btnMomo" class="btn" data-i18n="payMomo"></button>
-    <button id="btnCash" class="btn" data-i18n="payCash"></button>
-    <p class="muted small" data-i18n="mockNote"></p>
   </section>
 
-  <section id="screenWait" class="hidden">
-    <h1 data-i18n="waitTitle"></h1>
-    <div class="spinner"></div>
-    <p data-i18n="waitText"></p>
-    <p id="waitProgress" class="muted"></p>
-  </section>
+  <div class="container status">
+    <div class="card">
+      <div id="stIcon" class="ic"><svg width="22" height="22"><use href="#i-lock"/></svg></div>
+      <div class="tx"><b id="stTitle"></b><span id="stText" class="muted small"></span></div>
+      <button id="stBtn" class="btn primary sm"></button>
+      <button id="stGps" class="btn sm"><svg><use href="#i-locate"/></svg><span data-i18n="useGps"></span></button>
+    </div>
+  </div>
 
-  <section id="screenCash" class="hidden">
-    <h1 data-i18n="cashTitle"></h1>
-    <p data-i18n="cashStep1"></p>
-    <div id="orderCode" class="bigcode"></div>
-    <div id="cashAmount" class="price" style="text-align:center"></div>
-    <p id="cashStatus" class="muted" style="text-align:center"></p>
-    <hr>
-    <p data-i18n="cashStep2"></p>
-    <input id="shortInput" maxlength="10" autocomplete="off" autocapitalize="characters">
-    <button id="btnShort" class="btn primary" data-i18n="submit"></button>
-    <p id="shortMsg" class="err"></p>
-    <button id="btnCashBack" class="btn link" data-i18n="back"></button>
-  </section>
-
-  <section id="screenMomo" class="hidden">
-    <h1 data-i18n="momoTitle"></h1>
-    <p data-i18n="momoStep1"></p>
-    <img id="momoQr" alt="MoMo QR" style="display:block;margin:12px auto;width:260px;max-width:80%;background:#fff;border:1px solid #e6dccd;border-radius:12px;padding:8px">
-    <p id="momoAccount" class="muted small" style="text-align:center"></p>
-    <div id="momoAmount" class="price" style="text-align:center"></div>
-    <p style="text-align:center;margin-bottom:0" data-i18n="momoNote"></p>
-    <div id="momoCode" class="bigcode"></div>
-    <p id="momoStatus" class="muted" style="text-align:center"></p>
-    <p class="muted small" data-i18n="momoHint"></p>
-    <button id="btnMomoBack" class="btn link" data-i18n="back"></button>
-  </section>
-
-  <section id="screenMsg" class="hidden">
-    <h1 id="msgTitle"></h1>
-    <p id="msgText"></p>
-    <button id="msgBtn" class="btn primary"></button>
-  </section>
+  <div class="container">
+    <div class="sechead"><h2 data-i18n="poisTitle"></h2><span id="poiCount" class="muted small"></span></div>
+    <div id="homeChips" class="chips"></div>
+    <div id="poiGrid" class="grid"></div>
+    <div id="homeMsg" class="empty hidden"></div>
+  </div>
 </main>
 
-<section id="screenMap" class="hidden">
-  <div id="map"></div>
-  <div id="mapMsg" class="mapmsg hidden"></div>
-  <div id="fabs">
-    <button id="btnLocate" class="fab">&#9678;</button>
-    <button id="btnAuto" class="fab">&#128266;</button>
-    <button id="btnSim" class="fab hidden">&#129514;</button>
-  </div>
-  <div id="banner" class="banner hidden">
-    <span id="bannerText"></span>
-    <button id="bannerListen" class="btn primary small"></button>
-    <button id="bannerClose" class="x">&times;</button>
-  </div>
-  <div id="sheet" class="sheet hidden">
-    <button id="sheetClose" class="x">&times;</button>
-    <h2 id="sheetTitle"></h2>
-    <div id="sheetDist" class="muted small"></div>
-    <img id="sheetThumb" class="thumb hidden" alt="">
-    <p id="sheetShort" style="font-weight:600"></p>
-    <p id="sheetDesc"></p>
-    <p id="sheetNote" class="muted small"></p>
-    <p id="sheetAudio" class="muted small"></p>
-    <div class="row">
-      <button id="btnListen" class="btn primary"></button>
-      <button id="btnStop" class="btn hidden"></button>
-      <button id="btnDir" class="btn"></button>
+<!-- ================= BẢN ĐỒ ================= -->
+<main id="viewMap" class="hidden">
+  <aside class="side">
+    <div class="top">
+      <label class="search"><svg width="18" height="18" class="muted"><use href="#i-search"/></svg><input id="search" type="search" autocomplete="off"></label>
+      <div id="mapChips" class="chips"></div>
+    </div>
+    <div id="poiList" class="list"></div>
+  </aside>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div id="mapMsg" class="mapmsg hidden"></div>
+    <div class="fabs">
+      <button id="btnLocate" class="fab" type="button"><svg><use href="#i-locate"/></svg></button>
+      <button id="btnAuto" class="fab" type="button"><svg><use href="#i-sound"/></svg></button>
+      <button id="btnSim" class="fab hidden" type="button"><svg><use href="#i-sim"/></svg></button>
     </div>
   </div>
-  <div id="toast" class="toast hidden"></div>
-</section>
+</main>
+
+<!-- ================= VÉ / THANH TOÁN ================= -->
+<main id="viewTicket" class="view hidden">
+  <div class="container">
+    <section id="screenPay">
+      <div class="welcome">
+        <div class="eyebrow" data-i18n="welcome"></div>
+        <h1 data-i18n="heroTitle"></h1>
+        <div class="place" data-i18n="heroPlace"></div>
+        <p data-i18n="payIntro"></p>
+        <div class="small" style="opacity:.85;margin-bottom:8px" data-i18n="langLabel"></div>
+        <div id="payLangs" class="langchips"></div>
+      </div>
+      <h2 class="payh" data-i18n="payHeading"></h2>
+      <div id="ticketActive" class="card hidden" style="margin:16px 0">
+        <b class="ok" style="display:flex;gap:8px;align-items:center;color:var(--ok)"><svg width="20" height="20"><use href="#i-check"/></svg><span id="ticketActiveText"></span></b>
+      </div>
+      <div class="ticket">
+        <div><div class="k" data-i18n="ticketTitle"></div><div id="priceText" class="price">...</div></div>
+        <svg width="40" height="40" style="opacity:.6"><use href="#i-ticket"/></svg>
+        <div id="validText" class="v"></div>
+      </div>
+      <div class="paylist">
+        <button id="btnOnline" class="payopt"><span class="pi"><svg><use href="#i-card"/></svg></span><span><b data-i18n="payOnline"></b><span data-i18n="payOnlineSub"></span></span></button>
+        <button id="btnMomo" class="payopt"><span class="pi"><svg><use href="#i-qr"/></svg></span><span><b data-i18n="payMomo"></b><span data-i18n="payMomoSub"></span></span></button>
+        <button id="btnCash" class="payopt"><span class="pi"><svg><use href="#i-cash"/></svg></span><span><b data-i18n="payCash"></b><span data-i18n="payCashSub"></span></span></button>
+      </div>
+      <p class="muted small" data-i18n="mockNote"></p>
+    </section>
+
+    <section id="screenWait" class="hidden center">
+      <h1 data-i18n="waitTitle"></h1>
+      <div class="spinner"></div>
+      <p data-i18n="waitText"></p>
+      <p id="waitProgress" class="muted"></p>
+    </section>
+
+    <section id="screenCash" class="hidden">
+      <h1 data-i18n="cashTitle"></h1>
+      <div class="card">
+        <p data-i18n="cashStep1"></p>
+        <div id="orderCode" class="bigcode"></div>
+        <div id="cashAmount" class="center" style="font-weight:700;font-size:1.2rem"></div>
+        <p id="cashStatus" class="muted center"></p>
+      </div>
+      <hr>
+      <p data-i18n="cashStep2"></p>
+      <input id="shortInput" maxlength="10" autocomplete="off" autocapitalize="characters">
+      <p></p>
+      <button id="btnShort" class="btn primary block" data-i18n="submit"></button>
+      <p id="shortMsg" class="err"></p>
+      <button id="btnCashBack" class="btn block" data-i18n="back"></button>
+    </section>
+
+    <section id="screenMomo" class="hidden">
+      <h1 data-i18n="momoTitle"></h1>
+      <p data-i18n="momoStep1"></p>
+      <img id="momoQr" class="qr" alt="MoMo QR">
+      <p id="momoAccount" class="muted small center"></p>
+      <div id="momoAmount" class="center" style="font-weight:800;font-size:1.4rem"></div>
+      <p class="center" style="margin-bottom:0" data-i18n="momoNote"></p>
+      <div id="momoCode" class="bigcode"></div>
+      <p id="momoStatus" class="muted center"></p>
+      <p class="muted small" data-i18n="momoHint"></p>
+      <button id="btnMomoBack" class="btn block" data-i18n="back"></button>
+    </section>
+
+    <section id="screenMsg" class="hidden">
+      <h1 id="msgTitle"></h1>
+      <p id="msgText"></p>
+      <button id="msgBtn" class="btn primary block"></button>
+    </section>
+  </div>
+</main>
+
+<!-- Banner khi tới gần một điểm -->
+<div id="banner" class="banner hidden">
+  <img id="bannerImg" alt="">
+  <span id="bannerText"></span>
+  <button id="bannerListen" class="btn primary sm"></button>
+  <button id="bannerClose" class="x" aria-label="Đóng">&times;</button>
+</div>
+
+<!-- Chi tiết POI -->
+<div id="detail" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <div class="back" id="detailBack"></div>
+  <div class="panel">
+    <button class="close" id="detailClose" aria-label="Đóng">&times;</button>
+    <div class="gallery"><img id="dImg" alt=""><div id="dDots" class="dots"></div></div>
+    <div class="content">
+      <div id="dMeta" class="meta"></div>
+      <h2 id="dTitle"></h2>
+      <div id="dDist" class="muted small"></div>
+      <p id="dShort" class="lead"></p>
+      <div class="actions">
+        <button id="btnListen" class="btn primary"><svg><use href="#i-play"/></svg><span data-i18n="listen"></span></button>
+        <button id="btnStop" class="btn hidden"><svg><use href="#i-stop"/></svg><span data-i18n="stop"></span></button>
+        <button id="btnOnMap" class="btn"><svg><use href="#i-map"/></svg><span data-i18n="viewOnMap"></span></button>
+        <a id="btnDir" class="btn" target="_blank" rel="noopener"><svg><use href="#i-walk"/></svg><span data-i18n="directions"></span></a>
+      </div>
+      <p id="dDesc" class="desc"></p>
+      <p id="dNote" class="muted small"></p>
+      <p id="dAudio" class="muted small"></p>
+    </div>
+  </div>
+</div>
+
+<!-- Thanh phát thuyết minh -->
+<div id="player" class="player hidden">
+  <div class="row">
+    <img id="pImg" alt="">
+    <div class="tt"><b id="pTitle"></b><span id="pSub"></span></div>
+    <button id="pToggle" aria-label="Phát / tạm dừng"><svg><use id="pIcon" href="#i-pause"/></svg></button>
+    <button id="pClose" class="x2" aria-label="Dừng">&times;</button>
+  </div>
+  <div class="bar"><i id="pBar"></i></div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -154,42 +489,68 @@ const params = new URLSearchParams(location.search);
 const SIM_ENABLED = params.get('sim') === '1';
 const TTS_LANG = { vi: 'vi-VN', en: 'en-US', 'zh-CN': 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', fr: 'fr-FR' };
 const DEFAULT_LANGS = [{ code: 'vi', nativeName: 'Tiếng Việt' }, { code: 'en', nativeName: 'English' }];
+// Trước khi có vé chưa tải được dataset, nên danh sách ngôn ngữ thuyết minh để sẵn ở đây
+const ALL_LANGS = [{ code: 'vi', nativeName: 'Tiếng Việt' }, { code: 'en', nativeName: 'English' }, { code: 'zh-CN', nativeName: '中文' }, { code: 'ja', nativeName: '日本語' }, { code: 'ko', nativeName: '한국어' }, { code: 'fr', nativeName: 'Français' }];
+const CENTER = [16.1, 108.277];
 
 const T = {
   vi: {
-    title: 'Thuyết minh Chùa Linh Ứng', payHeading: 'Mở khóa hướng dẫn',
-    payIntro: 'Thanh toán vé để nghe thuyết minh tự động theo vị trí của bạn.',
-    ticketTitle: 'Vé tham quan', validFor: 'có hiệu lực {h} giờ',
-    payOnline: 'Thanh toán online', payCash: 'Thanh toán tiền mặt tại quầy',
-    mockNote: 'Chế độ thử nghiệm: thanh toán online là giả lập.',
+    title: 'Hành trình cùng SGU', tabHome: 'Trang chủ', tabMap: 'Bản đồ', tabTicket: 'Vé',
+    welcome: 'Chào mừng quý khách', heroTitle: 'Chùa Linh Ứng Sơn Trà', heroPlace: 'Bán đảo Sơn Trà · Đà Nẵng',
+    heroText: 'Đi dạo quanh chùa, khi tới gần mỗi điểm tham quan ứng dụng sẽ tự kể câu chuyện của nơi đó bằng ngôn ngữ của quý khách.',
+    langLabel: 'Chọn ngôn ngữ thuyết minh', explore: 'Khám phá bản đồ', buyTicket: 'Mua vé nghe thuyết minh',
+    poisTitle: 'Điểm tham quan', poiCount: '{n} điểm', all: 'Tất cả', searchPh: 'Tìm điểm tham quan...',
+    stNoneTitle: 'Quý khách đang xem bản giới thiệu', stNoneText: 'Nghe thử phần giới thiệu ngắn miễn phí. Mua vé để nghe thuyết minh đầy đủ, tự phát khi tới gần.',
+    stOkTitle: 'Vé còn hiệu lực', stOkText: 'Thuyết minh đầy đủ đã mở. Hạn dùng đến {time}.', stBuy: 'Mua vé', stMap: 'Mở bản đồ',
+    useGps: 'Bật định vị', viewOnMap: 'Xem trên bản đồ', lockedTitle: 'Phần thuyết minh đầy đủ cần vé tham quan',
+    lockedText: 'Quý khách đang nghe phần giới thiệu ngắn. Mua vé để nghe toàn bộ câu chuyện và bật tự phát khi tới gần.',
+    ticketExpired: 'Vé đã hết hạn. Quý khách vui lòng mua vé mới để tiếp tục nghe thuyết minh.', unlocked: 'Đã mở khóa thuyết minh. Chúc quý khách tham quan vui vẻ!',
+    nearLocked: 'gần quý khách. Mua vé để nghe thuyết minh.', ticketActive: 'Vé còn hiệu lực đến {time}', ticketPillNone: 'Mua vé',
+    payOnlineSub: 'Thẻ ATM, Visa, ví điện tử qua cổng thanh toán', payMomoSub: 'Quét mã, nhân viên xác nhận', payCashSub: 'Đưa mã đơn cho nhân viên tại quầy',
+    payHeading: 'Mua vé để bắt đầu', payIntro: 'Thanh toán vé để mở bản đồ và nghe thuyết minh đa ngôn ngữ. Khi quý khách đi tới gần mỗi điểm tham quan, ứng dụng sẽ tự kể câu chuyện của nơi đó.',
+    ticketTitle: 'Vé tham quan', validFor: 'Có hiệu lực {h} giờ kể từ khi mở khóa',
+    payOnline: 'Thanh toán online', payCash: 'Tiền mặt tại quầy',
+    mockNote: 'Chế độ thử nghiệm: thanh toán online là môi trường sandbox.',
     waitTitle: 'Đang xác nhận thanh toán', waitText: 'Vui lòng đợi trong giây lát...',
     waitFailTitle: 'Chưa xác nhận được', waitFailText: 'Hệ thống chưa nhận được kết quả. Hãy thử lại hoặc liên hệ nhân viên.',
     retry: 'Thử lại', cashTitle: 'Thanh toán tiền mặt', cashStep1: 'Đưa mã đơn này cho nhân viên và trả tiền:',
-    cashWaiting: 'Đang chờ nhân viên xác nhận...', cashPaid: 'Đã thu tiền. Hãy nhập mã nhân viên đọc cho bạn.',
+    cashWaiting: 'Đang chờ nhân viên xác nhận...', cashPaid: 'Đã thu tiền. Hãy nhập mã nhân viên đọc cho quý khách.',
     cashExpired: 'Đơn đã hết hạn hoặc bị hủy. Hãy tạo đơn mới.', cashStep2: 'Nhập mã truy cập do nhân viên đọc:',
-    submit: 'Xác nhận', codeInvalid: 'Mã sai hoặc đã hết hạn.', codeLocked: 'Bạn nhập sai quá nhiều lần. Thử lại sau 5 phút.',
+    submit: 'Xác nhận', codeInvalid: 'Mã sai hoặc đã hết hạn.', codeLocked: 'Nhập sai quá nhiều lần. Thử lại sau 5 phút.',
     cashNotYet: 'Chưa thu tiền, vui lòng chờ.', back: 'Quay lại', errTitle: 'Có lỗi xảy ra',
     errPayment: 'Không tạo được đơn thanh toán.', errCode: 'Mã thanh toán không hợp lệ hoặc đã hết hạn.',
-    payFailTitle: 'Thanh toán không thành công', payFailText: 'Bạn chưa bị trừ tiền. Hãy thử lại.', payAgain: 'Thanh toán lại',
+    payFailTitle: 'Thanh toán không thành công', payFailText: 'Quý khách chưa bị trừ tiền. Hãy thử lại.', payAgain: 'Thanh toán lại',
     networkError: 'Không kết nối được máy chủ.', mapLoading: 'Đang tải dữ liệu...',
-    noDataset: 'Chưa có dữ liệu thuyết minh. Quản trị viên cần publish dataset.', noPoi: 'Chưa có điểm tham quan nào.',
-    listen: 'Nghe thuyết minh', stop: 'Dừng', directions: 'Chỉ đường', nearYou: 'Bạn đang gần',
-    gpsDenied: 'Bạn chưa cho phép định vị. Bản đồ vẫn dùng được, hãy chạm vào điểm để xem.', gpsWeak: 'Tín hiệu GPS yếu.',
-    farAway: 'Bạn đang cách chùa khoảng {km} km.', noVoice: 'Thiết bị chưa có giọng đọc cho ngôn ngữ này, hãy đọc văn bản.',
-    autoOn: 'Tự động phát: bật', autoOff: 'Tự động phát: tắt', autoOnSpeech: 'Đã bật tự động thuyết minh',
-    fallbackNote: 'Chưa có bản dịch, hiển thị bằng {lang}.', distAway: 'Cách bạn {m} m',
+    noDataset: 'Chưa có dữ liệu thuyết minh. Quản trị viên cần publish dataset.', noPoi: 'Chưa có điểm tham quan nào.', noMatch: 'Không tìm thấy điểm phù hợp.',
+    listen: 'Nghe thuyết minh', listenShort: 'Nghe giới thiệu', stop: 'Dừng', directions: 'Chỉ đường', nearYou: 'Quý khách đang gần',
+    gpsDenied: 'Chưa cho phép định vị. Bản đồ vẫn dùng được, hãy chạm vào điểm để xem.', gpsWeak: 'Tín hiệu GPS yếu.',
+    farAway: 'Quý khách đang cách chùa khoảng {km} km.', noVoice: 'Thiết bị chưa có giọng đọc cho ngôn ngữ này, hãy đọc văn bản.',
+    autoOn: 'Tự động phát: bật', autoOff: 'Tự động phát: tắt', autoOnSpeech: 'Đã bật tự động thuyết minh', autoNeedTicket: 'Tự động phát cần vé tham quan.',
+    fallbackNote: 'Chưa có bản dịch, hiển thị bằng {lang}.', distAway: 'Cách quý khách {m}', playing: 'Đang phát',
     simOn: 'Giả lập vị trí: bật. Chạm lên bản đồ để di chuyển.', simOff: 'Giả lập vị trí: tắt', locate: 'Vị trí của tôi',
-    payMomo: 'Thanh toán MoMo (quét QR)', momoTitle: 'Thanh toán bằng MoMo',
+    payMomo: 'Thanh toán MoMo', momoTitle: 'Thanh toán bằng MoMo',
     momoStep1: 'Mở MoMo, quét mã QR bên dưới và chuyển đúng số tiền.', momoNote: 'Ghi nội dung chuyển tiền là:',
     momoWaiting: 'Đang chờ nhân viên xác nhận đã nhận tiền...', momoHint: 'Sau khi chuyển, giữ nguyên màn hình này. Ứng dụng sẽ tự mở khi nhân viên xác nhận.',
-    momoExpired: 'Đơn đã hết hạn hoặc không hợp lệ.', audioPre: 'Audio tạo sẵn (Edge-TTS)', audioLocal: 'Giọng đọc của trình duyệt'
+    momoExpired: 'Đơn đã hết hạn hoặc không hợp lệ.', audioPre: 'Giọng đọc thu sẵn', audioLocal: 'Giọng đọc của thiết bị', audioPreview: 'Giới thiệu ngắn',
+    min: '{n} phút', cat_STATUE: 'Tượng', cat_HALL: 'Công trình', cat_FACILITY: 'Tiện ích', cat_SHOP: 'Quán / cửa hàng', cat_OTHER: 'Điểm tham quan'
   },
   en: {
-    title: 'Linh Ung Pagoda Guide', payHeading: 'Unlock the guide',
-    payIntro: 'Buy a ticket to hear automatic narration based on your location.',
-    ticketTitle: 'Visitor ticket', validFor: 'valid for {h} hours',
-    payOnline: 'Pay online', payCash: 'Pay cash at the counter',
-    mockNote: 'Test mode: online payment is simulated.',
+    title: 'Linh Ung Pagoda Guide', tabHome: 'Home', tabMap: 'Map', tabTicket: 'Ticket',
+    welcome: 'Welcome', heroTitle: 'Linh Ung Pagoda, Son Tra', heroPlace: 'Son Tra Peninsula · Da Nang',
+    heroText: 'Walk around the pagoda. As you approach each point of interest, the app tells its story in your language.',
+    langLabel: 'Choose your narration language', explore: 'Explore the map', buyTicket: 'Get a ticket to listen',
+    poisTitle: 'Points of interest', poiCount: '{n} places', all: 'All', searchPh: 'Search places...',
+    stNoneTitle: 'You are viewing the preview', stNoneText: 'Listen to the short introductions for free. Buy a ticket for the full narration, played automatically as you arrive.',
+    stOkTitle: 'Ticket active', stOkText: 'Full narration unlocked. Valid until {time}.', stBuy: 'Buy ticket', stMap: 'Open map',
+    useGps: 'Use my location', viewOnMap: 'Show on map', lockedTitle: 'The full narration needs a ticket',
+    lockedText: 'You are hearing the short introduction. Buy a ticket for the whole story and automatic playback on arrival.',
+    ticketExpired: 'Your ticket has expired. Please buy a new one to keep listening.', unlocked: 'Narration unlocked. Enjoy your visit!',
+    nearLocked: 'is near you. Buy a ticket to listen.', ticketActive: 'Ticket valid until {time}', ticketPillNone: 'Buy ticket',
+    payOnlineSub: 'Bank card, Visa or e-wallet via payment gateway', payMomoSub: 'Scan the QR, staff confirm', payCashSub: 'Show the order code at the counter',
+    payHeading: 'Get a ticket to start', payIntro: 'Pay for a ticket to open the map and multilingual narration. As you approach each point of interest, the app tells its story.',
+    ticketTitle: 'Visitor ticket', validFor: 'Valid for {h} hours after unlocking',
+    payOnline: 'Pay online', payCash: 'Cash at the counter',
+    mockNote: 'Test mode: online payment uses a sandbox.',
     waitTitle: 'Confirming payment', waitText: 'Please wait a moment...',
     waitFailTitle: 'Not confirmed yet', waitFailText: 'No result received. Try again or ask the staff.',
     retry: 'Try again', cashTitle: 'Cash payment', cashStep1: 'Give this order code to the staff and pay:',
@@ -200,22 +561,28 @@ const T = {
     errPayment: 'Could not create the payment order.', errCode: 'The payment code is invalid or expired.',
     payFailTitle: 'Payment failed', payFailText: 'You have not been charged. Please try again.', payAgain: 'Pay again',
     networkError: 'Cannot reach the server.', mapLoading: 'Loading data...',
-    noDataset: 'No guide data yet. An admin must publish the dataset.', noPoi: 'No points of interest yet.',
-    listen: 'Listen', stop: 'Stop', directions: 'Directions', nearYou: 'You are near',
+    noDataset: 'No guide data yet. An admin must publish the dataset.', noPoi: 'No points of interest yet.', noMatch: 'No matching places.',
+    listen: 'Listen', listenShort: 'Listen to intro', stop: 'Stop', directions: 'Directions', nearYou: 'You are near',
     gpsDenied: 'Location permission denied. The map still works, tap a point to read about it.', gpsWeak: 'Weak GPS signal.',
     farAway: 'You are about {km} km from the pagoda.', noVoice: 'No voice for this language on your device, please read the text.',
-    autoOn: 'Auto-play: on', autoOff: 'Auto-play: off', autoOnSpeech: 'Automatic narration enabled',
-    fallbackNote: 'No translation yet, showing {lang}.', distAway: '{m} m away',
+    autoOn: 'Auto-play: on', autoOff: 'Auto-play: off', autoOnSpeech: 'Automatic narration enabled', autoNeedTicket: 'Auto-play needs a ticket.',
+    fallbackNote: 'No translation yet, showing {lang}.', distAway: '{m} away', playing: 'Playing',
     simOn: 'Location simulation on. Tap the map to move.', simOff: 'Location simulation off', locate: 'My location',
-    payMomo: 'Pay with MoMo (scan QR)', momoTitle: 'Pay with MoMo',
+    payMomo: 'Pay with MoMo', momoTitle: 'Pay with MoMo',
     momoStep1: 'Open MoMo, scan the QR code below and transfer the exact amount.', momoNote: 'Use this as the transfer message:',
     momoWaiting: 'Waiting for staff to confirm the payment...', momoHint: 'After transferring, keep this screen open. The app opens automatically once staff confirm.',
-    momoExpired: 'The order expired or is invalid.', audioPre: 'Pre-generated audio (Edge-TTS)', audioLocal: 'Browser voice'
+    momoExpired: 'The order expired or is invalid.', audioPre: 'Recorded narration', audioLocal: 'Device voice', audioPreview: 'Short introduction',
+    min: '{n} min', cat_STATUE: 'Statue', cat_HALL: 'Building', cat_FACILITY: 'Facility', cat_SHOP: 'Shop / café', cat_OTHER: 'Place'
   }
 };
 
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const store = {
+  get: (k, s) => { try { return (s ? sessionStorage : localStorage).getItem(k); } catch { return null; } },
+  set: (k, v, s) => { try { (s ? sessionStorage : localStorage).setItem(k, v); } catch { /* đầy hoặc bị chặn */ } },
+  del: (k, s) => { try { (s ? sessionStorage : localStorage).removeItem(k); } catch { /* bỏ qua */ } },
+};
 function normalizeLang(l) {
   l = (l || '').toLowerCase();
   if (l.startsWith('vi')) return 'vi';
@@ -223,91 +590,122 @@ function normalizeLang(l) {
   for (const c of ['ja', 'ko', 'fr', 'en']) if (l.startsWith(c)) return c;
   return 'en';
 }
-let lang = localStorage.getItem(K.lang) || normalizeLang(navigator.language);
+let lang = store.get(K.lang) || normalizeLang(navigator.language);
 const t = (key) => (T[lang] && T[lang][key]) ?? T.en[key] ?? key;
 
 let dataset = null, product = null, map = null, userMarker = null, accCircle = null, routeLine = null;
 let lastFix = null, watchId = null, engine = null, currentPoi = null, bannerPoi = null, bannerTimer = null;
 let autoplay = false, simOn = false, polling = false, cashPoll = null, toastTimer = null, speakTok = 0;
-let emptyMsg = '';
-let momoToken = 0;
+let emptyMsg = '', momoToken = 0, view = 'home', catFilter = 'ALL', query = '', selectedId = null;
+let nowPlaying = null, galleryIdx = 0;
 const markers = new Map();
 
-// ---------- Tiện ích giao diện ----------
-const SCREENS = ['screenPay', 'screenWait', 'screenCash', 'screenMomo', 'screenMsg', 'screenMap'];
-function show(id) {
-  SCREENS.forEach((s) => $(s).classList.toggle('hidden', s !== id));
-  $('screens').classList.toggle('hidden', id === 'screenMap');
-  if (id !== 'screenMap') stopSpeech();
+// ---------- Tiện ích ----------
+const PAY_SCREENS = ['screenPay', 'screenWait', 'screenCash', 'screenMomo', 'screenMsg'];
+function setView(v) {
+  if (v !== 'ticket' && !getToken()) { showPay(); return; }
+  view = v;
+  $('viewHome').classList.toggle('hidden', v !== 'home');
+  $('viewMap').classList.toggle('hidden', v !== 'map');
+  $('viewTicket').classList.toggle('hidden', v !== 'ticket');
+  document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === v));
   $('langMenu').classList.add('hidden');
+  if (v === 'map') { initMap(); setTimeout(() => { map.invalidateSize(); if (!lastFix) fitAll(); }, 30); startGps(); }
+  if (v !== 'map') window.scrollTo(0, 0);
+}
+function showPayScreen(id) {
+  setView('ticket');
+  document.body.classList.toggle('locked', !getToken());
+  PAY_SCREENS.forEach((s) => $(s).classList.toggle('hidden', s !== id));
 }
 function renderStatic() {
+  document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   $('langBtn').textContent = lang.split('-')[0].toUpperCase();
-  $('btnListen').textContent = t('listen'); $('btnStop').textContent = t('stop'); $('btnDir').textContent = t('directions');
-  $('bannerListen').textContent = t('listen');
+  $('search').placeholder = t('searchPh');
   $('btnLocate').title = t('locate'); $('btnAuto').title = autoplay ? t('autoOn') : t('autoOff');
+  $('bannerListen').textContent = t('listen');
   document.title = t('title');
+  document.body.classList.toggle('locked', !getToken());
+  renderPayLangs();
+  renderTicketState();
 }
 function toast(msg, ms = 4000) {
   const el = $('toast'); el.textContent = msg; el.classList.remove('hidden');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
 }
 function showMessage(title, text, btnLabel, onClick) {
-  show('screenMsg'); $('msgTitle').textContent = title; $('msgText').textContent = text;
+  showPayScreen('screenMsg'); $('msgTitle').textContent = title; $('msgText').textContent = text;
   $('msgBtn').textContent = btnLabel; $('msgBtn').onclick = onClick;
 }
 const fmtMoney = (p, cur) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: cur || 'VND', maximumFractionDigits: 0 }).format(p);
+const fmtDist = (m) => (m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km');
+const fmtTime = (ms) => new Date(ms).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function icon(name) { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + name); s.appendChild(u); return s; }
 
 // ---------- API & token ----------
 function tokenExp(tok) {
   try { return (JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0) * 1000; } catch { return 0; }
 }
 function getToken() {
-  const tk = localStorage.getItem(K.token);
+  const tk = store.get(K.token);
   return tk && tokenExp(tk) > Date.now() + 5000 ? tk : null;
 }
 async function api(method, path, { body, auth, headers } = {}) {
   const h = { ...(body ? { 'content-type': 'application/json' } : {}), ...(headers || {}) };
   if (auth) {
     const tk = getToken();
-    if (!tk) { logout(); return { status: 401, data: null }; }
+    if (!tk) { logout(true); return { status: 401, data: null }; }
     h.authorization = 'Bearer ' + tk;
   }
   const res = await fetch(API + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
   let data = null; try { data = await res.json(); } catch { /* 304 hoặc rỗng */ }
-  if (res.status === 401 && auth) logout();
+  if (res.status === 401 && auth) logout(true);
   return { status: res.status, data };
 }
 const errCode = (r) => (r && r.data && r.data.error && r.data.error.code) || ('HTTP_' + (r && r.status));
-function logout() { localStorage.removeItem(K.token); showPay(); }
-function saveToken(data) {
-  localStorage.setItem(K.token, data.accessToken);
-  sessionStorage.removeItem(PENDING);
-  sessionStorage.removeItem(PENDING_MOMO);
-  enterMap();
+function logout(expired) {
+  store.del(K.token); autoplay = false; $('btnAuto').classList.remove('on');
+  stopSpeech(); if (!$('detail').classList.contains('hidden')) closeDetail();
+  $('banner').classList.add('hidden');
+  dataset = null; engine = null; renderGrid(); renderList(); if (map) drawPois();
+  showPay();
+  if (expired) toast(t('ticketExpired'), 6000);
+}
+async function saveToken(data) {
+  store.set(K.token, data.accessToken);
+  store.del(PENDING, true); store.del(PENDING_MOMO, true);
+  await loadAndRender();
+  setView('home'); toast(t('unlocked'), 5000);
 }
 
-// ---------- Thanh toán ----------
+// ---------- Thanh toán (giữ nguyên luồng cũ) ----------
 async function showPay() {
-  show('screenPay'); renderStatic();
+  showPayScreen('screenPay'); renderStatic();
   try {
     const r = await api('GET', '/payments/products');
     if (r.status === 200 && r.data && r.data.length) {
       product = r.data.find((p) => p.code === 'DAY_PASS') || r.data[0];
-      $('priceText').textContent = fmtMoney(product.price, product.currency) + ' · ' + t('validFor').replace('{h}', product.validity_hours);
+      renderPrice();
     }
   } catch { $('priceText').textContent = t('networkError'); }
+}
+function renderPayLangs() {
+  const box = $('payLangs'); if (!box) return; box.innerHTML = '';
+  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : ALL_LANGS;
+  list.forEach((l) => { const b = el('button', l.code === lang ? 'on' : '', l.nativeName || l.name); b.type = 'button'; b.onclick = () => setLang(l.code); box.appendChild(b); });
+}
+function renderPrice() {
+  if (!product) return;
+  $('priceText').textContent = fmtMoney(product.price, product.currency);
+  $('validText').textContent = t('validFor').replace('{h}', product.validity_hours);
 }
 async function payOnline() {
   $('btnOnline').disabled = true;
   try {
     const r = await api('POST', '/payments/online', { body: { productCode: (product && product.code) || 'DAY_PASS', lang } });
-    if (r.status === 201) {
-      sessionStorage.setItem(PENDING, r.data.authCode);
-      location.href = r.data.paymentUrl;
-      return;
-    }
+    if (r.status === 201) { store.set(PENDING, r.data.authCode, true); location.href = r.data.paymentUrl; return; }
     showMessage(t('errTitle'), t('errPayment') + ' (' + errCode(r) + ')', t('back'), showPay);
   } catch { showMessage(t('errTitle'), t('networkError'), t('back'), showPay); }
   finally { $('btnOnline').disabled = false; }
@@ -317,7 +715,7 @@ async function payCash() {
   try {
     const r = await api('POST', '/payments/cash', { body: { productCode: (product && product.code) || 'DAY_PASS', lang } });
     if (r.status !== 201) { showMessage(t('errTitle'), t('errPayment') + ' (' + errCode(r) + ')', t('back'), showPay); return; }
-    show('screenCash');
+    showPayScreen('screenCash');
     $('orderCode').textContent = r.data.orderCode;
     $('cashAmount').textContent = fmtMoney(r.data.amount, r.data.currency);
     $('cashStatus').textContent = t('cashWaiting'); $('shortMsg').textContent = ''; $('shortInput').value = '';
@@ -334,19 +732,18 @@ async function payCash() {
   } catch { showMessage(t('errTitle'), t('networkError'), t('back'), showPay); }
   finally { $('btnCash').disabled = false; }
 }
-// Thanh toán MoMo QR: khách chuyển tiền, nhân viên đối soát thủ công, app tự mở khi đơn được xác nhận.
 async function payMomo() {
   $('btnMomo').disabled = true;
   try {
     const r = await api('POST', '/payments/momo-qr', { body: { productCode: (product && product.code) || 'DAY_PASS', lang } });
     if (r.status !== 201) { showMessage(t('errTitle'), t('errPayment') + ' (' + errCode(r) + ')', t('back'), showPay); return; }
-    sessionStorage.setItem(PENDING_MOMO, JSON.stringify(r.data));
+    store.set(PENDING_MOMO, JSON.stringify(r.data), true);
     showMomo(r.data);
   } catch { showMessage(t('errTitle'), t('networkError'), t('back'), showPay); }
   finally { $('btnMomo').disabled = false; }
 }
 function showMomo(d) {
-  show('screenMomo');
+  showPayScreen('screenMomo');
   const img = $('momoQr');
   img.onerror = () => { if (!img.src.endsWith('/momo-qr.svg')) img.src = '/momo-qr.svg'; };
   img.src = d.qr.imageUrl;
@@ -357,14 +754,14 @@ function showMomo(d) {
   momoPoll(d.authCode);
 }
 async function momoPoll(authCode) {
-  const my = ++momoToken; // mỗi lần bắt đầu/hủy đổi số này để vòng lặp cũ tự dừng
-  for (let i = 0; i < 450 && my === momoToken; i++) { // khoảng 30 phút, 4 giây một lần
+  const my = ++momoToken;
+  for (let i = 0; i < 450 && my === momoToken; i++) {
     try {
       const r = await api('POST', '/auth/exchange', { body: { authCode, lang } });
       if (my !== momoToken) return;
       if (r.status === 200) { momoToken++; saveToken(r.data); return; }
       if (r.status !== 202) {
-        momoToken++; sessionStorage.removeItem(PENDING_MOMO);
+        momoToken++; store.del(PENDING_MOMO, true);
         showMessage(t('errTitle'), t('momoExpired') + ' (' + errCode(r) + ')', t('payAgain'), showPay);
         return;
       }
@@ -384,14 +781,14 @@ async function submitShortCode() {
 }
 async function startPolling(authCode) {
   if (polling) return;
-  polling = true; show('screenWait');
+  polling = true; showPayScreen('screenWait');
   for (let i = 1; i <= 20; i++) {
     $('waitProgress').textContent = i + '/20';
     try {
       const r = await api('POST', '/auth/exchange', { body: { authCode, lang } });
       if (r.status === 200) { polling = false; saveToken(r.data); return; }
       if (r.status !== 202) {
-        polling = false; sessionStorage.removeItem(PENDING);
+        polling = false; store.del(PENDING, true);
         showMessage(t('errTitle'), t('errCode') + ' (' + errCode(r) + ')', t('payAgain'), showPay);
         return;
       }
@@ -405,69 +802,287 @@ function handleReturn() {
   const code = params.get('auth_code'), status = params.get('status');
   history.replaceState(null, '', '/');
   if (status === 'failed') {
-    sessionStorage.removeItem(PENDING);
+    store.del(PENDING, true);
     showMessage(t('payFailTitle'), t('payFailText'), t('payAgain'), showPay);
     return;
   }
-  if (code) { sessionStorage.setItem(PENDING, code); startPolling(code); } else showPay();
+  if (code) { store.set(PENDING, code, true); startPolling(code); } else showPay();
+}
+function openTicket() {
+  const pm = store.get(PENDING_MOMO, true);
+  if (pm) { try { showMomo(JSON.parse(pm)); return; } catch { store.del(PENDING_MOMO, true); } }
+  showPay();
 }
 
-// ---------- Dataset (tải một lần, dùng bộ nhớ đệm khi chưa đổi phiên bản) ----------
-async function loadDataset() {
-  emptyMsg = '';
+// ---------- Dữ liệu: bản đầy đủ (có vé) hoặc bản xem trước (công khai) ----------
+async function fetchVersioned(path, key, auth) {
   let cached = null;
-  try { cached = JSON.parse(localStorage.getItem(K.data) || 'null'); } catch { /* bỏ qua */ }
-  const headers = cached && cached.version ? { 'if-none-match': '"v' + cached.version + '"' } : {};
-  const r = await api('GET', '/poi/dataset/latest', { auth: true, headers });
-  if (r.status === 200) {
-    dataset = r.data;
-    try { localStorage.setItem(K.data, JSON.stringify(dataset)); } catch { /* đầy bộ nhớ */ }
-  } else if (r.status === 304 && cached) dataset = cached;
-  else if (r.status === 404) { dataset = { version: 0, languages: [], categories: [], pois: [], tours: [] }; emptyMsg = t('noDataset'); }
-  else if (r.status !== 401) {
-    if (cached) dataset = cached; else { dataset = null; $('mapMsg').textContent = t('errTitle') + ' (' + errCode(r) + ')'; }
-  }
+  try { cached = JSON.parse(store.get(key) || 'null'); } catch { /* bỏ qua */ }
+  const headers = cached && cached.version ? { 'if-none-match': '"' + (auth ? 'v' : 'p') + cached.version + '"' } : {};
+  const r = await api('GET', path, { auth, headers });
+  if (r.status === 200) { store.set(key, JSON.stringify(r.data)); return { data: r.data }; }
+  if (r.status === 304 && cached) return { data: cached };
+  if (r.status === 404) return { data: { version: 0, languages: [], categories: [], pois: [], tours: [] }, empty: true };
+  if (r.status === 401) return { unauthorized: true };
+  if (cached) return { data: cached };
+  return { error: errCode(r) };
 }
-async function enterMap() {
-  show('screenMap');
-  $('mapMsg').textContent = t('mapLoading'); $('mapMsg').classList.remove('hidden');
-  try { await loadDataset(); } catch { $('mapMsg').textContent = t('networkError'); return; }
-  if (!dataset) return;
-  buildLangMenu();
-  initMap(); drawPois(); startGps();
-  if (dataset.pois.length) $('mapMsg').classList.add('hidden');
-  else { $('mapMsg').textContent = emptyMsg || t('noPoi'); $('mapMsg').classList.remove('hidden'); }
-  if (SIM_ENABLED) $('btnSim').classList.remove('hidden');
+// Chỉ tải được dữ liệu khi đã có vé (token). Không có vé thì không có nội dung nào.
+async function loadData() {
+  emptyMsg = '';
+  if (!getToken()) { dataset = null; return; }
+  let res;
+  try {
+    res = await fetchVersioned('/poi/dataset/latest', K.data, true);
+    if (res.unauthorized) { dataset = null; return; }
+  } catch {
+    const c = store.get(K.data);
+    res = c ? { data: JSON.parse(c) } : { error: 'NETWORK' };
+  }
+  if (res.empty) emptyMsg = t('noDataset');
+  dataset = res.data || null;
+  if (res.error) emptyMsg = res.error === 'NETWORK' ? t('networkError') : t('errTitle') + ' (' + res.error + ')';
+}
+async function loadAndRender() {
+  await loadData();
+  engine = dataset ? new Geofence(dataset.pois) : null;
+  buildLangMenu(); renderStatic(); renderHero(); renderChips(); renderGrid(); renderList();
+  if (map) drawPois();
+  if (currentPoi && dataset) { const p = dataset.pois.find((x) => x.id === currentPoi.id); if (p) fillDetail(p); }
+}
+
+// ---------- Nội dung, ảnh, loại ----------
+function langName(code) {
+  const l = ((dataset && dataset.languages) || DEFAULT_LANGS).find((x) => x.code === code);
+  return l ? l.nativeName || l.name : code;
+}
+function content(poi) {
+  const tr = poi.translations || {};
+  let code = lang, c = tr[code];
+  if (!c || !c.name) {
+    code = tr.en && tr.en.name ? 'en' : tr.vi && tr.vi.name ? 'vi' : Object.keys(tr)[0];
+    c = code ? tr[code] : null;
+  }
+  return { c, code, fallback: code !== lang };
+}
+function catOf(poi) {
+  const c = ((dataset && dataset.categories) || []).find((x) => x.id === poi.categoryId);
+  const code = c ? c.code : 'OTHER';
+  return { code, color: (c && c.color) || '#8f1d22', name: t('cat_' + code) !== 'cat_' + code ? t('cat_' + code) : code };
+}
+const ICON_PATH = {
+  STATUE: 'M60 18c6 0 10 5 10 11 0 4-2 7-5 9l9 30H46l9-30c-3-2-5-5-5-9 0-6 4-11 10-11zM38 72h44v6H38z',
+  HALL: 'M18 46 60 22l42 24H90v4H30v-4zM34 54h6v24h-6zM57 54h6v24h-6zM80 54h6v24h-6zM26 80h68v6H26z',
+  FACILITY: 'M60 20a28 28 0 1 0 0 56 28 28 0 0 0 0-56zm-4 14h8v8h-8zm0 14h8v20h-8z',
+  SHOP: 'M30 40h60l-4 34H34zM40 40c0-12 8-18 20-18s20 6 20 18h-6c0-8-5-12-14-12s-14 4-14 12z',
+  OTHER: 'M60 18c-14 0-24 10-24 24 0 18 24 40 24 40s24-22 24-40c0-14-10-24-24-24zm0 32a8 8 0 1 1 0-16 8 8 0 0 1 0 16z',
+};
+const phCache = new Map();
+function placeholder(poi) {
+  const { code, color } = catOf(poi);
+  const key = code + color;
+  if (phCache.has(key)) return phCache.get(key);
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="' + color + '"/><stop offset="1" stop-color="#1b2a2a"/></linearGradient></defs>' +
+    '<rect width="120" height="90" fill="url(#g)"/><circle cx="96" cy="16" r="30" fill="#fff" opacity=".07"/>' +
+    '<path transform="translate(0,-4)" d="' + (ICON_PATH[code] || ICON_PATH.OTHER) + '" fill="#fff" opacity=".85"/></svg>';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  phCache.set(key, url); return url;
+}
+function imagesOf(poi) {
+  const list = [];
+  if (poi.thumbnailUrl) list.push(poi.thumbnailUrl);
+  (poi.media || []).forEach((m) => { if (m.url && !list.includes(m.url)) list.push(m.url); });
+  return list;
+}
+function setImg(img, poi, src) {
+  img.src = src || imagesOf(poi)[0] || placeholder(poi);
+  img.onerror = () => { img.onerror = null; img.src = placeholder(poi); };
+  img.loading = 'lazy';
+}
+function distOf(poi) { return lastFix ? haversine(lastFix, { lat: poi.lat, lng: poi.lng }) : null; }
+function filtered() {
+  if (!dataset) return [];
+  const q = query.trim().toLowerCase();
+  let list = dataset.pois.filter((p) => {
+    if (catFilter !== 'ALL' && catOf(p).code !== catFilter) return false;
+    if (!q) return true;
+    const { c } = content(p);
+    return ((c && c.name) || '').toLowerCase().includes(q) || ((c && c.shortDescription) || '').toLowerCase().includes(q);
+  });
+  if (view === 'map' && lastFix) list = list.slice().sort((a, b) => distOf(a) - distOf(b));
+  return list;
+}
+const indexOf = (poi) => (dataset ? dataset.pois.indexOf(poi) + 1 : 0);
+
+// ---------- Trang chủ ----------
+function renderHero() {
+  const box = $('heroLangs'); box.innerHTML = '';
+  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : DEFAULT_LANGS;
+  list.forEach((l) => {
+    const b = el('button', l.code === lang ? 'on' : '', l.nativeName || l.name);
+    b.onclick = () => setLang(l.code); box.appendChild(b);
+  });
+  const withImg = dataset && dataset.pois.find((p) => imagesOf(p).length);
+  const ph = $('heroPhoto');
+  if (withImg) {
+    const src = imagesOf(withImg)[0], probe = new Image();
+    probe.onload = () => { ph.style.backgroundImage = 'url("' + src.replace(/"/g, '%22') + '")'; ph.classList.add('on'); };
+    probe.src = src;
+  } else ph.classList.remove('on');
+}
+function renderTicketState() {
+  const tk = getToken();
+  const pill = $('ticketPill');
+  if (tk) {
+    const until = fmtTime(tokenExp(tk));
+    pill.textContent = t('ticketActive').replace('{time}', until); pill.className = 'pill ok';
+    $('stTitle').textContent = t('stOkTitle'); $('stText').textContent = t('stOkText').replace('{time}', until);
+    $('stBtn').textContent = t('stMap'); $('stIcon').className = 'ic ok'; $('stIcon').firstElementChild.firstElementChild.setAttribute('href', '#i-check');
+    $('ticketActive').classList.remove('hidden'); $('ticketActiveText').textContent = t('ticketActive').replace('{time}', until);
+  } else {
+    pill.textContent = t('ticketPillNone'); pill.className = 'pill buy';
+    $('stTitle').textContent = t('stNoneTitle'); $('stText').textContent = t('stNoneText');
+    $('stBtn').textContent = t('stBuy'); $('stIcon').className = 'ic'; $('stIcon').firstElementChild.firstElementChild.setAttribute('href', '#i-lock');
+    $('ticketActive').classList.add('hidden');
+  }
+  $('stGps').classList.toggle('hidden', !!lastFix || watchId !== null);
+}
+function renderChips() {
+  const codes = [];
+  ((dataset && dataset.pois) || []).forEach((p) => { const c = catOf(p).code; if (!codes.includes(c)) codes.push(c); });
+  ['homeChips', 'mapChips'].forEach((id) => {
+    const box = $(id); box.innerHTML = '';
+    if (codes.length < 2) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    ['ALL', ...codes].forEach((c) => {
+      const b = el('button', c === catFilter ? 'on' : '', c === 'ALL' ? t('all') : t('cat_' + c));
+      b.onclick = () => { catFilter = c; renderChips(); renderGrid(); renderList(); };
+      box.appendChild(b);
+    });
+  });
+}
+function playIconFor(poi) { return nowPlaying === poi.id ? 'stop' : 'play'; }
+function renderGrid() {
+  const grid = $('poiGrid'); grid.innerHTML = '';
+  const list = filtered();
+  $('poiCount').textContent = dataset ? t('poiCount').replace('{n}', dataset.pois.length) : '';
+  const msg = $('homeMsg');
+  if (!list.length) {
+    msg.textContent = emptyMsg || (dataset && dataset.pois.length ? t('noMatch') : t('noPoi'));
+    msg.classList.remove('hidden'); return;
+  }
+  msg.classList.add('hidden');
+  list.forEach((p) => {
+    const { c } = content(p), cat = catOf(p), d = distOf(p);
+    const card = el('article', 'poi' + (nowPlaying === p.id ? ' playing' : ''));
+    card.tabIndex = 0; card.dataset.id = p.id;
+    const imgBox = el('div', 'img');
+    const img = el('img'); img.alt = (c && c.name) || p.code; setImg(img, p); imgBox.appendChild(img);
+    imgBox.appendChild(el('span', 'num', String(indexOf(p))));
+    const play = el('button', 'play'); play.type = 'button'; play.setAttribute('aria-label', t('listen'));
+    play.appendChild(icon(playIconFor(p)));
+    play.onclick = (e) => { e.stopPropagation(); togglePlay(p); };
+    imgBox.appendChild(play); card.appendChild(imgBox);
+    const body = el('div', 'body');
+    const meta = el('div', 'meta');
+    const ct = el('span', 'cat'); const dot = el('i'); dot.style.background = cat.color; ct.appendChild(dot); ct.appendChild(document.createTextNode(cat.name));
+    meta.appendChild(ct);
+    if (d !== null) meta.appendChild(el('span', '', fmtDist(d)));
+    body.appendChild(meta);
+    body.appendChild(el('h3', '', (c && c.name) || p.code));
+    if (c && c.shortDescription) body.appendChild(el('p', '', c.shortDescription));
+    const foot = el('div', 'foot'); foot.appendChild(icon('sound'));
+    foot.lastChild.setAttribute('width', '16'); foot.lastChild.setAttribute('height', '16');
+    foot.appendChild(document.createTextNode(c && c.audioDurationSec ? t('listen') + ' · ' + t('min').replace('{n}', Math.max(1, Math.round(c.audioDurationSec / 60))) : t('listen')));
+    body.appendChild(foot);
+    card.appendChild(body);
+    card.onclick = () => openDetail(p);
+    card.onkeydown = (e) => { if (e.key === 'Enter') openDetail(p); };
+    grid.appendChild(card);
+  });
+}
+
+// ---------- Danh sách bên cạnh bản đồ ----------
+function renderList() {
+  const box = $('poiList'); box.innerHTML = '';
+  const list = filtered();
+  if (!list.length) { box.appendChild(el('div', 'empty', emptyMsg || (dataset && dataset.pois.length ? t('noMatch') : t('noPoi')))); return; }
+  list.forEach((p) => {
+    const { c } = content(p), d = distOf(p), cat = catOf(p);
+    const it = el('div', 'item' + (selectedId === p.id ? ' sel' : '') + (nowPlaying === p.id ? ' playing' : ''));
+    it.dataset.id = p.id; it.tabIndex = 0; it.setAttribute('role', 'button');
+    const img = el('img'); img.alt = ''; setImg(img, p); it.appendChild(img);
+    const tx = el('div'); tx.style.minWidth = '0';
+    tx.appendChild(el('b', '', indexOf(p) + '. ' + ((c && c.name) || p.code)));
+    const meta = el('div', 'meta');
+    const ct = el('span', 'cat'); const dot = el('i'); dot.style.background = cat.color; ct.appendChild(dot); ct.appendChild(document.createTextNode(cat.name));
+    meta.appendChild(ct); if (d !== null) meta.appendChild(el('span', '', fmtDist(d)));
+    tx.appendChild(meta);
+    if (c && c.shortDescription) tx.appendChild(el('div', 's', c.shortDescription));
+    it.appendChild(tx);
+    const pl = el('button', 'pl'); pl.type = 'button'; pl.setAttribute('aria-label', t('listen')); pl.appendChild(icon(playIconFor(p)));
+    pl.onclick = (e) => { e.stopPropagation(); togglePlay(p); };
+    it.appendChild(pl);
+    it.onclick = () => { selectPoi(p, true); openDetail(p); };
+    it.onkeydown = (e) => { if (e.key === 'Enter') { selectPoi(p, true); openDetail(p); } };
+    it.onmouseenter = () => highlightMarker(p.id, true);
+    it.onmouseleave = () => highlightMarker(p.id, selectedId === p.id);
+    box.appendChild(it);
+  });
+}
+function selectPoi(p, pan) {
+  selectedId = p.id;
+  document.querySelectorAll('#poiList .item').forEach((x) => x.classList.toggle('sel', x.dataset.id === p.id));
+  markers.forEach((_, id) => highlightMarker(id, id === p.id));
+  if (pan && map) map.setView([p.lat, p.lng], Math.max(map.getZoom(), 18));
+}
+function highlightMarker(id, on) {
+  const m = markers.get(id), e = m && m.marker.getElement();
+  const pin = e && e.querySelector('.pin'); if (pin) pin.classList.toggle('sel', on);
 }
 
 // ---------- Bản đồ ----------
 function initMap() {
-  if (map) { map.invalidateSize(); return; }
+  if (map) return;
   map = L.map('map', { zoomControl: false });
   const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
   const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
   osm.addTo(map);
-  L.control.layers({ 'Bản đồ': osm, 'Vệ tinh': sat }, null, { position: 'topright' }).addTo(map);
+  L.control.layers({ 'Bản đồ / Map': osm, 'Vệ tinh / Satellite': sat }, null, { position: 'bottomleft' }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
-  map.setView([16.1, 108.277], 16);
+  map.setView(CENTER, 16);
   map.on('click', (e) => { if (simOn) setFix({ lat: e.latlng.lat, lng: e.latlng.lng, accuracy: 5 }); });
+  if (SIM_ENABLED) $('btnSim').classList.remove('hidden');
+  drawPois();
+  if (lastFix) drawUser(lastFix);
 }
 function drawPois() {
+  if (!map) return;
   markers.forEach((m) => { m.marker.remove(); m.circle.remove(); });
   markers.clear();
-  const pts = [];
+  const msg = $('mapMsg');
+  if (!dataset || !dataset.pois.length) { msg.textContent = emptyMsg || t('noPoi'); msg.classList.remove('hidden'); return; }
+  msg.classList.add('hidden');
   dataset.pois.forEach((p, i) => {
-    const icon = L.divIcon({ className: '', html: '<div class="pin">' + (i + 1) + '</div>', iconSize: [30, 30], iconAnchor: [15, 15] });
-    const marker = L.marker([p.lat, p.lng], { icon }).addTo(map).on('click', () => openPoi(p));
-    const circle = L.circle([p.lat, p.lng], { radius: p.triggerRadiusM, color: '#b91c1c', weight: 1, fillOpacity: 0.08 }).addTo(map);
+    const icon = L.divIcon({ className: '', html: '<div class="pin"><span>' + (i + 1) + '</span></div>', iconSize: [32, 32], iconAnchor: [16, 32] });
+    const { c } = content(p);
+    const marker = L.marker([p.lat, p.lng], { icon, title: (c && c.name) || p.code }).addTo(map).on('click', () => {
+      selectPoi(p, false);
+      const it = document.querySelector('#poiList .item[data-id="' + p.id + '"]'); if (it) it.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      openDetail(p);
+    });
+    const circle = L.circle([p.lat, p.lng], { radius: p.triggerRadiusM, color: catOf(p).color, weight: 1, fillOpacity: 0.08 }).addTo(map);
     markers.set(p.id, { marker, circle });
-    pts.push([p.lat, p.lng]);
   });
-  engine = new Geofence(dataset.pois);
-  if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 18 });
-  map.invalidateSize();
+  fitAll();
+}
+function fitAll() {
+  if (!map || !dataset || !dataset.pois.length) return;
+  map.fitBounds(dataset.pois.map((p) => [p.lat, p.lng]), { padding: [40, 40], maxZoom: 18 });
 }
 function drawUser(f) {
+  if (!map) return;
   if (!userMarker) {
     userMarker = L.circleMarker([f.lat, f.lng], { radius: 8, color: '#fff', weight: 2, fillColor: '#2563eb', fillOpacity: 1 }).addTo(map);
     accCircle = L.circle([f.lat, f.lng], { radius: Math.min(f.accuracy, 300), color: '#2563eb', weight: 1, fillOpacity: 0.1 }).addTo(map);
@@ -513,80 +1128,91 @@ function startGps() {
     (err) => toast(err.code === 1 ? t('gpsDenied') : t('gpsWeak')),
     { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }
   );
+  renderTicketState();
 }
+let lastListRender = 0;
 function setFix(fix) {
   const first = !lastFix;
   lastFix = fix; drawUser(fix);
+  if (!dataset) return;
   let nearest = Infinity;
   dataset.pois.forEach((p) => {
     const d = haversine(fix, { lat: p.lat, lng: p.lng });
     nearest = Math.min(nearest, d);
-    const m = markers.get(p.id), el = m && m.marker.getElement();
-    if (el) { const pin = el.querySelector('.pin'); if (pin) pin.classList.toggle('near', d <= 100); }
+    const m = markers.get(p.id), e = m && m.marker.getElement();
+    if (e) { const pin = e.querySelector('.pin'); if (pin) pin.classList.toggle('near', d <= 100); }
   });
   if (first) {
-    if (nearest < 2000) map.setView([fix.lat, fix.lng], Math.max(map.getZoom(), 17));
-    else if (nearest !== Infinity) toast(t('farAway').replace('{km}', (nearest / 1000).toFixed(1)));
+    renderTicketState();
+    if (map && nearest < 2000) map.setView([fix.lat, fix.lng], Math.max(map.getZoom(), 17));
+    else if (nearest !== Infinity && nearest >= 2000) toast(t('farAway').replace('{km}', (nearest / 1000).toFixed(1)));
   }
+  // Cập nhật khoảng cách trên thẻ / danh sách tối đa 5 giây một lần để đỡ tốn pin
+  if (first || Date.now() - lastListRender > 5000) { lastListRender = Date.now(); renderGrid(); renderList(); }
   const picked = engine && engine.update(fix);
   if (picked) onEnter(picked);
   updateDistance();
 }
 function onEnter(poi) {
-  if (autoplay) { openPoi(poi); speakPoi(poi); } else showBanner(poi);
+  if (autoplay) { openDetail(poi); playPoi(poi); } else showBanner(poi);
 }
 function showBanner(poi) {
   const { c } = content(poi);
   bannerPoi = poi;
-  $('bannerText').textContent = t('nearYou') + ' ' + ((c && c.name) || poi.code);
+  setImg($('bannerImg'), poi);
+  const name = (c && c.name) || poi.code;
+  $('bannerText').textContent = t('nearYou') + ' ' + name;
+  $('bannerListen').textContent = t('listen');
   $('banner').classList.remove('hidden');
   clearTimeout(bannerTimer); bannerTimer = setTimeout(() => $('banner').classList.add('hidden'), 15000);
 }
 
 // ---------- Chi tiết POI ----------
-function langName(code) {
-  const l = ((dataset && dataset.languages) || DEFAULT_LANGS).find((x) => x.code === code);
-  return l ? l.nativeName || l.name : code;
+function fillDetail(poi) {
+  const { c, code, fallback } = content(poi), cat = catOf(poi);
+  const imgs = imagesOf(poi);
+  galleryIdx = Math.min(galleryIdx, Math.max(imgs.length - 1, 0));
+  setImg($('dImg'), poi, imgs[galleryIdx]);
+  $('dImg').alt = (c && c.name) || poi.code;
+  const dots = $('dDots'); dots.innerHTML = '';
+  if (imgs.length > 1) imgs.forEach((src, i) => {
+    const b = el('button', i === galleryIdx ? 'on' : ''); b.setAttribute('aria-label', String(i + 1));
+    b.onclick = () => { galleryIdx = i; fillDetail(poi); }; dots.appendChild(b);
+  });
+  const meta = $('dMeta'); meta.innerHTML = '';
+  const ct = el('span', 'cat'); const dot = el('i'); dot.style.background = cat.color; ct.appendChild(dot); ct.appendChild(document.createTextNode(cat.name));
+  meta.appendChild(ct); meta.appendChild(el('span', '', '#' + indexOf(poi)));
+  $('dTitle').textContent = (c && c.name) || poi.code;
+  $('dShort').textContent = (c && c.shortDescription) || '';
+  $('dDesc').textContent = (c && c.description) || '';
+  $('dNote').textContent = fallback && code ? t('fallbackNote').replace('{lang}', langName(code)) : '';
+  $('dAudio').textContent = c && c.audioUrl ? t('audioPre') : t('audioLocal');
+  $('btnDir').href = 'https://www.google.com/maps/dir/?api=1&destination=' + poi.lat + ',' + poi.lng + '&travelmode=walking';
+  setSpeakingUi();
+  updateDistance();
 }
-function content(poi) {
-  const tr = poi.translations || {};
-  let code = lang, c = tr[code];
-  if (!c || !c.name) {
-    code = tr.en && tr.en.name ? 'en' : tr.vi && tr.vi.name ? 'vi' : Object.keys(tr)[0];
-    c = code ? tr[code] : null;
-  }
-  return { c, code, fallback: code !== lang };
+function openDetail(poi) {
+  if (currentPoi && currentPoi.id !== poi.id) galleryIdx = 0;
+  currentPoi = poi; fillDetail(poi);
+  $('detail').classList.remove('hidden'); $('banner').classList.add('hidden');
+  document.body.style.overflow = 'hidden';
 }
-function fillSheet(poi) {
-  const { c, code, fallback } = content(poi);
-  $('sheetTitle').textContent = (c && c.name) || poi.code;
-  $('sheetShort').textContent = (c && c.shortDescription) || '';
-  $('sheetDesc').textContent = (c && c.description) || '';
-  $('sheetNote').textContent = fallback && code ? t('fallbackNote').replace('{lang}', langName(code)) : '';
-  $('sheetAudio').textContent = c && c.audioUrl ? t('audioPre') : t('audioLocal');
-  const img = $('sheetThumb');
-  if (poi.thumbnailUrl) { img.src = poi.thumbnailUrl; img.classList.remove('hidden'); img.onerror = () => img.classList.add('hidden'); }
-  else img.classList.add('hidden');
-}
-function openPoi(poi) {
-  currentPoi = poi; fillSheet(poi);
-  $('sheet').classList.remove('hidden'); $('banner').classList.add('hidden');
-  setSpeaking(false); map.panTo([poi.lat, poi.lng]); updateDistance();
-}
-function closeSheet() {
-  currentPoi = null; $('sheet').classList.add('hidden'); stopSpeech();
+function closeDetail() {
+  $('detail').classList.add('hidden'); document.body.style.overflow = '';
+  currentPoi = null; galleryIdx = 0;
   if (routeLine) { routeLine.remove(); routeLine = null; }
 }
 function updateDistance() {
-  if (!currentPoi || !lastFix) { $('sheetDist').textContent = ''; return; }
+  if (!currentPoi || !lastFix) { $('dDist').textContent = ''; return; }
   const d = haversine(lastFix, { lat: currentPoi.lat, lng: currentPoi.lng });
-  $('sheetDist').textContent = t('distAway').replace('{m}', Math.round(d));
+  $('dDist').textContent = t('distAway').replace('{m}', fmtDist(d));
+  if (!map) return;
   const pts = [[lastFix.lat, lastFix.lng], [currentPoi.lat, currentPoi.lng]];
   if (routeLine) routeLine.setLatLngs(pts);
   else routeLine = L.polyline(pts, { color: '#2563eb', weight: 3, dashArray: '6 8' }).addTo(map);
 }
 
-// ---------- Thuyết minh bằng giọng đọc của trình duyệt (Web Speech API) ----------
+// ---------- Phát thuyết minh: MP3 dựng sẵn → giọng đọc của thiết bị ----------
 let voices = [];
 const hasTts = 'speechSynthesis' in window;
 function loadVoices() { voices = hasTts ? speechSynthesis.getVoices() : []; }
@@ -605,81 +1231,122 @@ function chunk(text) {
   return out;
 }
 function speak(text, code) {
-  if (!hasTts) { toast(t('noVoice')); return false; }
+  if (!hasTts) { toast(t('noVoice')); stopSpeech(); return false; }
   const bcp = TTS_LANG[code] || 'en-US', v = voiceFor(bcp);
-  if (!v && voices.length) { toast(t('noVoice')); return false; }
+  if (!v && voices.length) { toast(t('noVoice')); stopSpeech(); return false; }
   speechSynthesis.cancel();
   const tok = ++speakTok, parts = chunk(text);
   parts.forEach((part, i) => {
     const u = new SpeechSynthesisUtterance(part);
     u.lang = bcp; u.rate = 0.95; if (v) u.voice = v;
-    if (i === parts.length - 1) u.onend = () => { if (tok === speakTok) setSpeaking(false); };
-    u.onerror = () => { if (tok === speakTok) setSpeaking(false); };
+    u.onstart = () => { if (tok === speakTok) setProgress((i + 0.5) / parts.length); };
+    if (i === parts.length - 1) u.onend = () => { if (tok === speakTok) endPlayback(); };
+    u.onerror = () => { if (tok === speakTok) endPlayback(); };
     speechSynthesis.speak(u);
   });
-  setSpeaking(true);
   return true;
 }
 const player = new Audio();
 const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-// Tầng 1: MP3 tạo sẵn từ server. Lỗi (chưa có file, mạng yếu) thì tự rơi về tầng cuối: giọng đọc của trình duyệt.
+player.ontimeupdate = () => { if (player.duration) setProgress(player.currentTime / player.duration); };
 function playAudio(url, onFail) {
-  stopSpeech();
-  const tok = ++speakTok;
-  player.onended = () => { if (tok === speakTok) setSpeaking(false); };
+  const tok = speakTok;
+  player.onended = () => { if (tok === speakTok) endPlayback(); };
   player.onerror = () => { if (tok === speakTok) onFail(); };
   player.src = url;
-  setSpeaking(true);
   player.play().catch(() => { if (tok === speakTok) onFail(); });
 }
-function speakPoi(poi) {
+function playPoi(poi) {
   const { c, code } = content(poi);
   if (!c) return;
+  haltAudio();
+  nowPlaying = poi.id; speakTok++;
+  let sub, ok = true;
   const text = [c.name, c.description].filter(Boolean).join('. ');
-  if (c.audioUrl) playAudio(c.audioUrl, () => speak(text, code)); else speak(text, code);
+  if (c.audioUrl) { sub = t('audioPre'); playAudio(c.audioUrl, () => { $('pSub').textContent = t('playing') + ' · ' + t('audioLocal'); speak(text, code); }); }
+  else { sub = t('audioLocal'); ok = speak(text, code); }
+  if (ok) showPlayer(poi, sub);
 }
-function stopSpeech() { speakTok++; player.onended = null; player.onerror = null; player.pause(); if (hasTts) speechSynthesis.cancel(); setSpeaking(false); }
-function setSpeaking(on) { $('btnListen').classList.toggle('hidden', on); $('btnStop').classList.toggle('hidden', !on); }
+function togglePlay(poi) { if (nowPlaying === poi.id) stopSpeech(); else playPoi(poi); }
+function haltAudio() { player.onended = null; player.onerror = null; player.pause(); if (hasTts) speechSynthesis.cancel(); }
+function stopSpeech() { speakTok++; haltAudio(); endPlayback(); }
+function endPlayback() { nowPlaying = null; $('player').classList.add('hidden'); setProgress(0); setSpeakingUi(); }
+function showPlayer(poi, sub) {
+  const { c } = content(poi);
+  setImg($('pImg'), poi);
+  $('pTitle').textContent = (c && c.name) || poi.code;
+  $('pSub').textContent = t('playing') + ' · ' + sub;
+  $('pIcon').setAttribute('href', '#i-pause');
+  $('player').classList.remove('hidden');
+  setProgress(0); setSpeakingUi();
+}
+function setProgress(f) { $('pBar').style.width = Math.max(0, Math.min(1, f)) * 100 + '%'; }
+function setSpeakingUi() {
+  const on = !!(currentPoi && nowPlaying === currentPoi.id);
+  $('btnListen').classList.toggle('hidden', on); $('btnStop').classList.toggle('hidden', !on);
+  document.querySelectorAll('.poi[data-id], .item[data-id]').forEach((n) => {
+    const playing = n.dataset.id === nowPlaying;
+    n.classList.toggle('playing', playing);
+    const u = n.querySelector('.play use, .pl use'); if (u) u.setAttribute('href', playing ? '#i-stop' : '#i-play');
+  });
+}
+function togglePause() {
+  if (!nowPlaying) return;
+  if (player.src && !player.paused) { player.pause(); $('pIcon').setAttribute('href', '#i-play'); return; }
+  if (player.src && player.paused && player.currentTime > 0 && !player.ended) { player.play().catch(() => {}); $('pIcon').setAttribute('href', '#i-pause'); return; }
+  if (hasTts && speechSynthesis.speaking) {
+    if (speechSynthesis.paused) { speechSynthesis.resume(); $('pIcon').setAttribute('href', '#i-pause'); }
+    else { speechSynthesis.pause(); $('pIcon').setAttribute('href', '#i-play'); }
+  }
+}
 
 // ---------- Ngôn ngữ ----------
 function buildLangMenu() {
-  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : DEFAULT_LANGS;
+  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : ALL_LANGS;
   const menu = $('langMenu'); menu.innerHTML = '';
   list.forEach((l) => {
-    const b = document.createElement('button');
-    b.textContent = l.nativeName || l.name; if (l.code === lang) b.className = 'active';
+    const b = el('button', l.code === lang ? 'active' : '');
+    b.appendChild(el('span', '', l.nativeName || l.name)); b.appendChild(el('span', 'muted small', l.code));
     b.onclick = () => setLang(l.code);
     menu.appendChild(b);
   });
 }
 function setLang(code) {
-  lang = code; localStorage.setItem(K.lang, code);
-  stopSpeech(); renderStatic(); buildLangMenu(); $('langMenu').classList.add('hidden');
-  if (currentPoi) fillSheet(currentPoi);
-  if (!$('screenPay').classList.contains('hidden') && product) {
-    $('priceText').textContent = fmtMoney(product.price, product.currency) + ' · ' + t('validFor').replace('{h}', product.validity_hours);
-  }
+  lang = code; store.set(K.lang, code);
+  stopSpeech(); renderStatic(); buildLangMenu(); renderHero(); renderChips(); renderGrid(); renderList(); renderPrice();
+  $('langMenu').classList.add('hidden');
+  if (currentPoi) fillDetail(currentPoi);
+  if (map) drawPois();
 }
 
 // ---------- Sự kiện ----------
+document.querySelectorAll('[data-view]').forEach((b) => { b.onclick = () => (b.dataset.view === 'ticket' ? openTicket() : setView(b.dataset.view)); });
+$('brandBtn').onclick = () => setView('home');
+$('ticketPill').onclick = () => (getToken() ? setView('map') : openTicket());
+$('heroMap').onclick = () => setView('map');
+$('stBtn').onclick = () => (getToken() ? setView('map') : openTicket());
+$('stGps').onclick = startGps;
+$('search').addEventListener('input', (e) => { query = e.target.value; renderList(); });
 $('btnOnline').onclick = payOnline;
 $('btnCash').onclick = payCash;
 $('btnMomo').onclick = payMomo;
-$('btnMomoBack').onclick = () => { momoToken++; sessionStorage.removeItem(PENDING_MOMO); showPay(); };
+$('btnMomoBack').onclick = () => { momoToken++; store.del(PENDING_MOMO, true); showPay(); };
 $('btnShort').onclick = submitShortCode;
 $('shortInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitShortCode(); });
 $('btnCashBack').onclick = () => { clearInterval(cashPoll); showPay(); };
 $('langBtn').onclick = () => $('langMenu').classList.toggle('hidden');
-$('sheetClose').onclick = closeSheet;
+document.addEventListener('click', (e) => { if (!e.target.closest('#langMenu, #langBtn')) $('langMenu').classList.add('hidden'); });
+$('detailClose').onclick = closeDetail; $('detailBack').onclick = closeDetail;
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('detail').classList.contains('hidden')) closeDetail(); });
+$('btnOnMap').onclick = () => { const p = currentPoi; closeDetail(); if (!p) return; setView('map'); setTimeout(() => selectPoi(p, true), 60); };
 $('bannerClose').onclick = () => $('banner').classList.add('hidden');
-$('bannerListen').onclick = () => { if (bannerPoi) { openPoi(bannerPoi); speakPoi(bannerPoi); } };
-$('btnListen').onclick = () => { if (currentPoi) speakPoi(currentPoi); };
+$('bannerListen').onclick = () => { if (bannerPoi) { openDetail(bannerPoi); playPoi(bannerPoi); } };
+$('btnListen').onclick = () => { if (currentPoi) playPoi(currentPoi); };
 $('btnStop').onclick = stopSpeech;
-$('btnDir').onclick = () => {
-  if (!currentPoi) return;
-  window.open('https://www.google.com/maps/dir/?api=1&destination=' + currentPoi.lat + ',' + currentPoi.lng + '&travelmode=walking', '_blank');
-};
+$('pToggle').onclick = togglePause;
+$('pClose').onclick = stopSpeech;
 $('btnLocate').onclick = () => {
+  startGps();
   if (lastFix && map) map.setView([lastFix.lat, lastFix.lng], 18); else toast(t('gpsWeak'));
 };
 $('btnAuto').onclick = () => {
@@ -687,7 +1354,7 @@ $('btnAuto').onclick = () => {
   $('btnAuto').classList.toggle('on', autoplay); renderStatic();
   toast(autoplay ? t('autoOn') : t('autoOff'));
   // Trình duyệt (nhất là iOS) chỉ cho đọc sau một thao tác chạm: đọc câu ngắn để "mở khóa"
-  if (autoplay) { player.src = SILENT; player.play().catch(() => {}); speak(t('autoOnSpeech'), lang); }
+  if (autoplay) { player.src = SILENT; player.play().catch(() => {}); if (hasTts) { const u = new SpeechSynthesisUtterance(t('autoOnSpeech')); u.lang = TTS_LANG[lang] || 'en-US'; speechSynthesis.speak(u); } }
 };
 $('btnSim').onclick = () => {
   simOn = !simOn; $('btnSim').classList.toggle('on', simOn);
@@ -695,15 +1362,21 @@ $('btnSim').onclick = () => {
 };
 
 // ---------- Khởi động ----------
-function boot() {
+async function boot() {
   renderStatic(); buildLangMenu();
-  if (location.pathname.startsWith('/payment/return')) return handleReturn();
-  if (getToken()) return enterMap();
-  const pm = sessionStorage.getItem(PENDING_MOMO);
-  if (pm) { try { return showMomo(JSON.parse(pm)); } catch { sessionStorage.removeItem(PENDING_MOMO); } }
-  const pending = sessionStorage.getItem(PENDING);
-  if (pending) return startPolling(pending);
-  showPay();
+  const onReturn = location.pathname.startsWith('/payment/return');
+  if (getToken()) await loadAndRender();
+  if (onReturn) return handleReturn();
+  if (!getToken()) {
+    const pm = store.get(PENDING_MOMO, true);
+    if (pm) { try { return showMomo(JSON.parse(pm)); } catch { store.del(PENDING_MOMO, true); } }
+    const pending = store.get(PENDING, true);
+    if (pending) return startPolling(pending);
+  }
+  if (!getToken()) { showPay(); return; }
+  setView('home');
+  // Vé hết hạn trong lúc đang dùng: khóa app, quay về màn hình mua vé
+  setInterval(() => { if (dataset && !getToken()) logout(true); }, 60000);
 }
 boot();
 })();

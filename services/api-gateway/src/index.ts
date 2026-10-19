@@ -56,6 +56,7 @@ async function authenticate(req: Request, res: Response, next: NextFunction) {
     // Service tin cac header nay vi chi gateway moi toi duoc service (mang noi bo)
     req.headers['x-user-id'] = String(payload.sub ?? '');
     req.headers['x-user-role'] = role;
+    if (payload.username) req.headers['x-user-name'] = String(payload.username);
     if (payload.jti) req.headers['x-session-id'] = String(payload.jti);
     next();
   } catch {
@@ -74,7 +75,7 @@ app.use(cors({ origin: config.corsOrigin.split(','), credentials: false }));
 
 // Luon xoa header danh tinh do client gui len, tranh gia mao
 app.use((req, _res, next) => {
-  for (const h of ['x-user-id', 'x-user-role', 'x-session-id', 'x-internal-key']) delete req.headers[h];
+  for (const h of ['x-user-id', 'x-user-role', 'x-user-name', 'x-session-id', 'x-internal-key']) delete req.headers[h];
   next();
 });
 
