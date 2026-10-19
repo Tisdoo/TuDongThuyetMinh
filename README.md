@@ -11,7 +11,7 @@
 | Payment Service (đơn online/tiền mặt, webhook, Outbox, báo cáo) | Đã có, Payoo ở chế độ **mock** |
 | POI Service (POI, bản dịch, tour, publish `dataset.json`) | Bản khởi đầu |
 | Trang quầy nhân viên (`tools/staff`) | Đã có |
-| Web App du khách (`tools/tourist`): thanh toán, bản đồ, GPS, geofence, nghe thuyết minh | Bản đầu tiên, cần thử trên thiết bị thật |
+| Web App du khách (`web/`, React + TS): thanh toán, bản đồ, GPS, geofence, nghe thuyết minh, chat | Đã có, cần thử trên thiết bị thật (bản một file cũ ở `/classic/`) |
 | Trang quản trị POI (`tools/admin`): thêm POI bằng bản đồ/GPS, nhập CSV, publish | Bản đầu tiên, cần thử trên thiết bị thật |
 | Kiểm thử tự động (`scripts/smoke.mjs`) | Đã có |
 | Payoo sandbox thật | Chưa làm (`payoo.ts` chế độ `sandbox` trả 501) |
@@ -33,7 +33,8 @@ linhung-guide/
 │   ├── payment-service/:4002  vé, đơn hàng, Payoo (mock), tiền mặt, webhook, outbox
 │   └── poi-service/    :4003  POI, bản dịch, tour, dataset
 ├── infra/nginx/web.conf      nginx phục vụ web du khách + admin, chuyển /api sang Gateway
-├── tools/tourist/index.html  Web App du khách (một file, Leaflet + Web Speech)
+├── web/                      Web App du khách React + TS (xem web/README.md)
+├── tools/tourist/index.html  bản một file cũ, phục vụ ở /classic/
 ├── tools/admin/index.html    trang quản trị POI (bản đồ, GPS, CSV, publish)
 ├── services/content-worker/  worker Python: dịch tự động + audio Edge-TTS
 ├── tools/staff/staff.html    trang quầy nhân viên
@@ -184,7 +185,8 @@ Docker phục vụ cả hai qua service `web` (nginx, cổng **5175**), `/api` �
 
 | Trang | Địa chỉ | Dùng để |
 |---|---|---|
-| Web App du khách | `http://localhost:5175` | Thanh toán, bản đồ, GPS, nghe thuyết minh |
+| Web App du khách (React, `web/`) | `http://localhost:5175` | Thanh toán, bản đồ, GPS, nghe thuyết minh |
+| Bản một file cũ (dự phòng) | `http://localhost:5175/classic/` | Như trên, viết bằng JS thuần |
 | Chế độ giả lập vị trí | `http://localhost:5175/?sim=1` | Thử geofence khi không ở chùa: bấm nút 🧪 rồi chạm lên bản đồ để "đi" |
 | Quản trị POI | `http://localhost:5175/admin/` | Thêm, sửa POI, nhập CSV, publish |
 | Quầy nhân viên | `http://localhost:5174/staff.html` | Xác nhận thu tiền mặt |

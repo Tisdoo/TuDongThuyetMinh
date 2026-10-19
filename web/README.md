@@ -11,8 +11,9 @@ Nguyên tắc:
 
 1. **Không viết lại từ đầu.** Bản một file `tools/tourist/index.html` (nhóm trưởng dựng) đã có đủ logic chạy được. Bản React này
    tách logic đó thành module có kiểu (TypeScript), để dễ đọc, dễ chia việc và dễ đưa vào báo cáo chương 6. Hai bản dùng chung API, nên
-   nếu bản React gặp sự cố lúc demo thì vẫn còn bản cũ ở cổng 5175 làm phương án dự phòng.
-2. **Chỉ một đường ngrok.** Vite proxy `/api` → Gateway `:8080`, nên giao diện và API cùng origin: không cần CORS, chỉ cần một đường ngrok.
+   nếu bản React gặp sự cố lúc demo thì vẫn còn bản cũ ở `/classic/` làm phương án dự phòng.
+2. **Chỉ một đường ngrok, giữ cổng 5175 như cả nhóm.** nginx (service `web`) phục vụ app và chuyển `/api` → Gateway (khi dev thì Vite proxy làm việc này),
+   nên giao diện và API cùng origin: không cần CORS, chỉ cần một đường ngrok.
 3. **Tải dataset một lần.** Sau khi có token, gọi `GET /api/poi/dataset/latest` một lần (gửi `If-None-Match` theo version đã lưu → 304 thì
    dùng bản trong `localStorage`). Mọi thứ sau đó (bản đồ, geofence, nội dung) chạy trên máy khách, không gọi API POI nữa.
 4. **Luôn có đường lùi:**
@@ -26,7 +27,8 @@ Nguyên tắc:
 
 ```
 web/
-├── vite.config.ts          host + allowedHosts (ngrok), proxy /api -> :8080, /audio -> :5175
+├── Dockerfile              build rồi phục vụ bằng nginx (service web, cổng 5175)
+├── vite.config.ts          dev: host + allowedHosts (ngrok), proxy /api -> :8080, /audio -> :5175
 ├── public/                 manifest.webmanifest, sw.js (cache vỏ app + ô bản đồ), icon.svg
 └── src/
     ├── api/client.ts       gọi Gateway, gắn Bearer token, xử lý 401 -> về màn hình thanh toán
@@ -56,18 +58,35 @@ web/
 
 ## 4. Chạy
 
-Cần Node.js 20+ và backend đang chạy (`docker compose up -d` ở thư mục gốc).
+**Cách chính (giống cả nhóm, cổng 5175):** ở thư mục gốc chạy
+
+```bash
+docker compose up --build -d
+```
+
+Service `web` build app này (`web/Dockerfile`) và phục vụ bằng nginx ở `http://localhost:5175`, `/api` được chuyển sang Gateway.
+`.env` giữ mặc định `FRONTEND_URL=http://localhost:5175`, `PUBLIC_BASE_URL=http://localhost:5175`, không cần sửa gì.
+Sửa code frontend xong thì build lại: `docker compose up --build -d web`.
+
+| Địa chỉ | Trang |
+|---|---|
+| `http://localhost:5175` | Web App React (thêm `?sim=1` để giả lập vị trí) |
+| `http://localhost:5175/classic/` | Bản một file cũ, giữ để dự phòng khi demo |
+| `http://localhost:5175/admin/` | Quản trị POI |
+| `http://localhost:5175/owner-register.html` | Chủ quán đăng ký |
+
+**Khi đang code (tự tải lại khi sửa file):** cần Node.js 20+, backend đang chạy.
 
 ```bash
 cd web
 npm install
-npm run dev            # http://localhost:5173  (thêm ?sim=1 để giả lập vị trí)
+npm run dev            # http://localhost:5173
 ```
 
-Trong `.env` ở thư mục gốc đặt `FRONTEND_URL=http://localhost:5173` và `PUBLIC_BASE_URL=http://localhost:5173` (để Payoo mock quay về đúng
-`/payment/return`), rồi `docker compose up -d`.
+Thanh toán online mock sẽ quay về `FRONTEND_URL` (5175). Muốn quay về đúng bản dev thì tạm đặt `FRONTEND_URL` và `PUBLIC_BASE_URL`
+thành `http://localhost:5173` rồi `docker compose up -d`; nhớ trả lại 5175 sau khi xong.
 
-**Thử trên điện thoại:** `ngrok http 5173`, đặt hai biến trên thành link `https://xxxx.ngrok-free.app`, `docker compose up -d`.
+**Thử trên điện thoại:** `ngrok http 5175`, đặt hai biến trên thành link `https://xxxx.ngrok-free.app`, `docker compose up -d`.
 GPS chỉ chạy trên HTTPS nên bắt buộc dùng link ngrok.
 
 Kiểm tra trước khi tạo Pull Request: `npm run build` và `npm run lint` không lỗi.
@@ -93,7 +112,7 @@ chỉnh `triggerRadiusM` cùng người B, và thu thập ảnh/video cho báo c
 
 ## 6. Cần chốt với các bạn
 
-- **Người A:** đồng ý thêm `FRONTEND_URL`/`PUBLIC_BASE_URL` = cổng 5173 (hoặc link ngrok) khi demo bằng bản React.
+- **Người A:** duyệt thay đổi nhỏ ở `docker-compose.yml` (service `web` build từ `./web`) và `infra/nginx/web.conf` (thêm `/classic/`).
 - **Người B:** định dạng `/api/chat` (đề xuất: request `{ question, lang, poiId? }`, response `{ answer }`); mỗi POI 2–3 câu để giọng
   đọc không quá dài; có ảnh `thumbnailUrl` thì sheet hiện ảnh.
 
