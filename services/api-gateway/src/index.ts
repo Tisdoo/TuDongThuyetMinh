@@ -31,6 +31,10 @@ const PUBLIC: Array<[string, RegExp]> = [
   ['GET', /^\/api\/payments\/orders\/[A-Za-z0-9]+$/],
   ['POST', /^\/api\/payments\/webhook\/payoo$/],
   ['GET', /^\/api\/payments\/mock\/payoo\/pay\/[A-Za-z0-9]+$/],
+  // VNPAY: Return URL (trinh duyet khach) va IPN (server VNPAY goi ngam) khong co JWT
+  ['GET', /^\/api\/payments\/vnpay\/return$/],
+  ['GET', /^\/api\/payments\/vnpay\/ipn$/],
+  ['POST', /^\/api\/payments\/vnpay\/ipn$/],
   ['POST', /^\/api\/auth\/(exchange|exchange-short)$/],
   ['POST', /^\/api\/auth\/staff\/(login|refresh|logout)$/],
   ['POST', /^\/api\/auth\/owner\/(register|registration-status)$/],
@@ -52,6 +56,7 @@ async function authenticate(req: Request, res: Response, next: NextFunction) {
     // Service tin cac header nay vi chi gateway moi toi duoc service (mang noi bo)
     req.headers['x-user-id'] = String(payload.sub ?? '');
     req.headers['x-user-role'] = role;
+    if (payload.username) req.headers['x-user-name'] = String(payload.username);
     if (payload.jti) req.headers['x-session-id'] = String(payload.jti);
     next();
   } catch {
@@ -70,7 +75,7 @@ app.use(cors({ origin: config.corsOrigin.split(','), credentials: false }));
 
 // Luon xoa header danh tinh do client gui len, tranh gia mao
 app.use((req, _res, next) => {
-  for (const h of ['x-user-id', 'x-user-role', 'x-session-id', 'x-internal-key']) delete req.headers[h];
+  for (const h of ['x-user-id', 'x-user-role', 'x-user-name', 'x-session-id', 'x-internal-key']) delete req.headers[h];
   next();
 });
 

@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Địa điểm của tôi - Chủ địa điểm</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#f4f3ef; --surface:#ffffff; --surface-2:#eceae4; --ink:#1c1f1e; --muted:#5d6461; --line:#dcdad3;
+  --red:#8f1d22; --red-2:#b3262d; --on-red:#ffffff; --gold:#a8741c; --sea:#17656e; --ok:#1f7a3f; --warn:#8a5a00;
+  --ok-bg:#e3f3e8; --warn-bg:#fbefd6; --err-bg:#f8e1df;
+  --shadow:0 1px 2px rgba(20,20,20,.05), 0 4px 16px rgba(20,20,20,.06);
+  --font:"Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#121514; --surface:#1a1e1d; --surface-2:#232827; --ink:#e8eae6; --muted:#a3aba7; --line:#2d3331;
+  --red:#d9545a; --red-2:#e8686e; --on-red:#1b0b0c; --gold:#d8a64e; --sea:#5fb2ba; --ok:#6fd393; --warn:#f0c35a;
+  --ok-bg:#16301f; --warn-bg:#352a10; --err-bg:#3a1a19;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3); color-scheme:dark; } }
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.55}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1000}
+.topbar .wrap{display:flex;align-items:center;gap:12px;min-height:60px}
+.topbar .logo{width:34px;height:34px;flex:none}
+.topbar b{display:block;font-weight:800;font-size:1.02rem;letter-spacing:-.2px}
+.topbar small{display:block;color:var(--muted);font-size:.76rem}
+.topbar .sp{flex:1}
+.topbar a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600}
+.topbar a:hover{color:var(--ink)}
+@media (max-width:560px){ .topbar a{display:none} }
+.wrap{max-width:var(--maxw,1000px);margin:0 auto;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px))}
+main.wrap{padding-block:22px 48px}
+h1{font-size:1.5rem;letter-spacing:-.4px;margin:0 0 6px;color:var(--ink)}
+h2{font-size:1.08rem;letter-spacing:-.2px;margin:26px 0 10px}
+a{color:var(--sea)}
+label{display:block;font-size:.86rem;color:var(--muted);font-weight:500}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:4px 0;width:100%;max-width:100%}
+input[type=checkbox]{width:auto;accent-color:var(--red)}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb, var(--sea) 45%, transparent);border-color:var(--sea)}
+textarea{min-height:80px;resize:vertical}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 14px;margin:4px 6px 4px 0;font-weight:600;width:auto}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.55;cursor:default}
+button.primary,.primary{background:var(--red);border-color:var(--red);color:var(--on-red)}
+button.primary:hover{background:var(--red-2);border-color:var(--red-2)}
+button.alt{background:var(--surface);color:var(--red);border-color:var(--red)}
+:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0;box-shadow:var(--shadow);overflow-x:auto}
+.muted{color:var(--muted)} .err{color:var(--red)} .ok{color:var(--ok)}
+.hidden{display:none!important}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th{font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:700;white-space:nowrap}
+td,th{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+tr:last-child td{border-bottom:0}
+td button{padding:6px 10px;font-size:.84rem;margin:2px 4px 2px 0}
+pre{background:var(--surface-2);color:var(--ink);padding:12px;border-radius:10px;overflow:auto;max-height:280px;font-size:.84rem}
+nav.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:4px;background:var(--surface-2);border-radius:12px;margin:10px 0 4px}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{flex:none;border:0;background:none;margin:0;padding:8px 14px;border-radius:9px;color:var(--muted);white-space:nowrap}
+nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
+.leaflet-container{font-family:var(--font)}
+
+h1{margin-top:6px}
+textarea{min-height:120px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+#map{height:320px;border-radius:12px;margin-top:8px;border:1px solid var(--line)}
+.poi{border-top:1px solid var(--line);padding:14px 0}
+.poi:first-child{border-top:0}
+.poi b{font-size:1.02rem}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.b-PENDING{background:var(--warn-bg);color:var(--warn)} .b-APPROVED{background:var(--ok-bg);color:var(--ok)} .b-REJECTED{background:var(--err-bg);color:var(--red)}
+.actions button{padding:6px 12px}
+label{margin-top:12px}
+#loginBox{max-width:440px}
+</style>
+</head>
+<body>
+<header class="topbar" style="--maxw:760px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M5 15.5 17 8l12 7.5h-3.2l-8.8-5.4-8.8 5.4zM8.5 16.5h17v1.8h-17zM10 19.5h2v7h-2zM16 19.5h2v7h-2zM22 19.5h2v7h-2zM7.5 27h19v1.8h-19z" fill="#f3d38e"/></svg><div><b>Địa điểm của tôi</b><small>Chùa Linh Ứng · Chủ địa điểm</small></div><span class="sp"></span><a href="/owner-register.html">Đăng ký</a><a href="/">Web App du khách</a></div></header>
+<main class="wrap" style="--maxw:760px">
+<h1>Địa điểm của tôi</h1>
+<p class="muted">Dành cho chủ địa điểm đã được duyệt. Chưa có tài khoản? <a href="/owner-register.html">Đăng ký tại đây</a>.</p>
+
+<section id="loginBox" class="card">
+  <label>Tên đăng nhập<input id="user" autocomplete="username"></label>
+  <label>Mật khẩu<input id="pass" type="password" autocomplete="current-password"></label>
+  <button id="btnLogin">Đăng nhập</button>
+  <div id="loginMsg"></div>
+</section>
+
+<section id="main" class="hidden">
+  <div class="top"><span>Xin chào <b id="who"></b></span><button id="btnLogout" class="alt" style="margin-top:0">Đăng xuất</button></div>
+
+  <div class="card">
+    <div class="top"><h2 style="margin:0">Danh sách địa điểm</h2><button id="btnAdd" style="margin-top:0">+ Thêm địa điểm</button></div>
+    <div id="list"></div>
+    <div id="listMsg" class="muted"></div>
+  </div>
+
+  <div id="formBox" class="card hidden">
+    <h2 id="formTitle">Thêm địa điểm</h2>
+    <p class="muted">Địa điểm mới hoặc vừa sửa sẽ <b>chờ quản trị viên duyệt</b> trước khi hiện trên app du khách. Chỉ cần nhập tiếng Việt, hệ thống tự dịch và tạo audio sau khi duyệt.</p>
+    <label>Tên địa điểm<input id="f_name" maxlength="200"></label>
+    <label>Mô tả ngắn (một câu, hiện trong danh sách)<input id="f_short" maxlength="500"></label>
+    <label>Giới thiệu (20 đến 3000 ký tự; nên 40 đến 80 từ, câu ngắn để giọng đọc nghe rõ)<textarea id="f_desc" maxlength="3000"></textarea></label>
+    <div class="muted" id="descCount"></div>
+    <label>Ảnh đại diện (đường dẫn https, không bắt buộc)<input id="f_thumb" placeholder="https://..."></label>
+
+    <h2>Vị trí</h2>
+    <div class="row">
+      <label>Vĩ độ (lat)<input id="f_lat" type="number" step="any"></label>
+      <label>Kinh độ (lng)<input id="f_lng" type="number" step="any"></label>
+    </div>
+    <label>Bán kính kích hoạt thuyết minh (10 đến 60 m)<input id="f_radius" type="number" min="10" max="60" value="25"></label>
+    <button id="btnGps" class="alt">Dùng vị trí GPS của tôi</button>
+    <div id="gpsMsg" class="muted">Chạm lên bản đồ để chọn vị trí (kéo ghim để chỉnh), hoặc đứng tại quán và bấm nút GPS (cần HTTPS).</div>
+    <div id="map"></div>
+
+    <button id="btnSave">Gửi duyệt</button> <button id="btnCancel" class="alt">Hủy</button>
+    <div id="saveMsg"></div>
+  </div>
+</section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+const API = '/api', K = { at: 'll_owner_at', rt: 'll_owner_rt', who: 'll_owner_who' };
+const $ = (id) => document.getElementById(id);
+const say = (el, text, cls) => { el.textContent = text; el.className = cls || ''; };
+const store = {
+  get: (k) => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } },
+  set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} },
+  del: (k) => { try { sessionStorage.removeItem(k); } catch {} },
+};
+let token = store.get(K.at), refreshToken = store.get(K.rt);
+let items = [], editingId = null, map = null, marker = null, circle = null;
+
+const ERR = {
+  INVALID_CREDENTIALS: 'Sai tên đăng nhập hoặc mật khẩu, hoặc hồ sơ chưa được duyệt.',
+  TOO_MANY_ATTEMPTS: 'Nhập sai quá nhiều lần, hãy thử lại sau 15 phút.',
+  VALIDATION_ERROR: 'Thông tin chưa hợp lệ, hãy kiểm tra lại các ô.',
+  OWNER_POI_LIMIT: 'Bạn đã đạt số địa điểm tối đa.',
+  POI_NOT_FOUND: 'Không tìm thấy địa điểm (có thể đã bị xóa).',
+  FORBIDDEN: 'Tài khoản này không phải tài khoản chủ địa điểm.',
+};
+const STATUS = { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối' };
+const codeOf = (r) => (r.data && r.data.error && r.data.error.code) || ('HTTP ' + r.status);
+const errText = (r) => ERR[codeOf(r)] || ('Lỗi: ' + codeOf(r));
+
+async function rawCall(method, path, body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: 'Bearer ' + token } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = null; try { data = await res.json(); } catch { /* 204 */ }
+  return { status: res.status, data };
+}
+// Token sống 15 phút: khi hết hạn thì tự làm mới bằng refresh token một lần
+async function api(method, path, body) {
+  let r = await rawCall(method, path, body);
+  if (r.status === 401 && refreshToken) {
+    const f = await fetch(API + '/auth/staff/refresh', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken }) });
+    if (f.ok) { const d = await f.json(); saveTokens(d); r = await rawCall(method, path, body); }
+  }
+  if (r.status === 401) logout('Phiên đăng nhập đã hết hạn, hãy đăng nhập lại.');
+  return r;
+}
+function saveTokens(d) { token = d.accessToken; refreshToken = d.refreshToken; store.set(K.at, token); store.set(K.rt, refreshToken); }
+
+// ---------- Đăng nhập ----------
+async function login() {
+  const msg = $('loginMsg'); say(msg, '', '');
+  $('btnLogin').disabled = true;
+  try {
+    const res = await fetch(API + '/auth/staff/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: $('user').value.trim(), password: $('pass').value }) });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) { say(msg, errText({ status: res.status, data }), 'err'); return; }
+    if (data.role !== 'OWNER') {
+      say(msg, 'Tài khoản ' + data.role + ' không dùng trang này. Nhân viên/quản trị vào trang /admin/.', 'err');
+      fetch(API + '/auth/staff/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken: data.refreshToken }) }).catch(() => {});
+      return;
+    }
+    saveTokens(data); store.set(K.who, $('user').value.trim()); $('pass').value = '';
+    enter();
+  } catch { say(msg, 'Không kết nối được máy chủ.', 'err'); }
+  finally { $('btnLogin').disabled = false; }
+}
+function logout(reason) {
+  if (refreshToken) fetch(API + '/auth/staff/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refreshToken }) }).catch(() => {});
+  token = ''; refreshToken = ''; Object.values(K).forEach(store.del);
+  $('main').classList.add('hidden'); $('loginBox').classList.remove('hidden');
+  say($('loginMsg'), typeof reason === 'string' ? reason : '', 'err');
+}
+function enter() { $('who').textContent = store.get(K.who) || 'chủ địa điểm'; $('loginBox').classList.add('hidden'); $('main').classList.remove('hidden'); loadList(); }
+
+// ---------- Danh sách ----------
+async function loadList() {
+  const r = await api('GET', '/poi/owner/pois');
+  if (r.status !== 200) { say($('listMsg'), errText(r), 'err'); return; }
+  items = r.data.items;
+  const box = $('list'); box.innerHTML = '';
+  items.forEach((p) => {
+    const d = document.createElement('div'); d.className = 'poi';
+    const t = document.createElement('div');
+    const b = document.createElement('b'); b.textContent = p.name || '(chưa có tên)'; t.appendChild(b);
+    const s = document.createElement('span'); s.className = 'badge b-' + p.review_status; s.textContent = STATUS[p.review_status] || p.review_status; t.appendChild(s);
+    d.appendChild(t);
+    const info = document.createElement('div'); info.className = 'muted';
+    info.textContent = (p.short_description ? p.short_description + ' · ' : '') + 'Mã ' + p.code + ' · gửi lúc ' + new Date(p.submitted_at || p.created_at).toLocaleString('vi-VN');
+    d.appendChild(info);
+    if (p.review_status === 'APPROVED') { const n = document.createElement('div'); n.className = 'ok'; n.textContent = 'Đã duyệt, sẽ hiện trên app du khách từ lần cập nhật dữ liệu tiếp theo.'; d.appendChild(n); }
+    if (p.review_note) { const n = document.createElement('div'); n.className = p.review_status === 'REJECTED' ? 'err' : 'muted'; n.textContent = 'Ghi chú của quản trị viên: ' + p.review_note; d.appendChild(n); }
+    const a = document.createElement('div'); a.className = 'actions';
+    const be = document.createElement('button'); be.className = 'alt'; be.textContent = p.review_status === 'REJECTED' ? 'Sửa và gửi lại' : 'Sửa'; be.onclick = () => openForm(p);
+    const bd = document.createElement('button'); bd.className = 'alt'; bd.textContent = 'Xóa'; bd.onclick = () => removePoi(p);
+    a.appendChild(be); a.appendChild(bd); d.appendChild(a);
+    box.appendChild(d);
+  });
+  say($('listMsg'), items.length ? items.length + ' / ' + r.data.limit + ' địa điểm.' : 'Bạn chưa có địa điểm nào. Bấm "+ Thêm địa điểm" để bắt đầu.', 'muted');
+  $('btnAdd').disabled = items.length >= r.data.limit;
+}
+async function removePoi(p) {
+  if (!confirm('Xóa địa điểm "' + (p.name || p.code) + '"? Địa điểm sẽ biến mất khỏi app ở lần cập nhật dữ liệu tới.')) return;
+  const r = await api('DELETE', '/poi/owner/pois/' + p.id);
+  if (r.status !== 204) alert(errText(r));
+  if (editingId === p.id) closeForm();
+  loadList();
+}
+
+// ---------- Form + bản đồ ----------
+function initMap() {
+  if (map) return;
+  map = L.map('map').setView([16.1, 108.277], 16);
+  const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
+  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
+  osm.addTo(map);
+  L.control.layers({ 'Bản đồ': osm, 'Vệ tinh': sat }).addTo(map);
+  map.on('click', (e) => setCoords(e.latlng.lat, e.latlng.lng, false));
+  ['f_lat', 'f_lng', 'f_radius'].forEach((id) => $(id).addEventListener('input', syncMarker));
+}
+function setCoords(lat, lng, pan) {
+  $('f_lat').value = lat.toFixed(6); $('f_lng').value = lng.toFixed(6);
+  syncMarker(); if (pan) map.setView([lat, lng], 18);
+}
+function syncMarker() {
+  const lat = parseFloat($('f_lat').value), lng = parseFloat($('f_lng').value), r = Number($('f_radius').value) || 25;
+  if (Number.isNaN(lat) || Number.isNaN(lng) || !map) return;
+  if (!marker) { marker = L.marker([lat, lng], { draggable: true }).addTo(map); marker.on('dragend', () => { const p = marker.getLatLng(); setCoords(p.lat, p.lng, false); }); }
+  else marker.setLatLng([lat, lng]);
+  if (!circle) circle = L.circle([lat, lng], { radius: r, color: '#b91c1c', weight: 1, fillOpacity: 0.12 }).addTo(map);
+  else { circle.setLatLng([lat, lng]); circle.setRadius(r); }
+}
+function clearMarker() { if (marker) { marker.remove(); marker = null; } if (circle) { circle.remove(); circle = null; } }
+function useMyGps() {
+  if (!('geolocation' in navigator)) { say($('gpsMsg'), 'Trình duyệt không hỗ trợ định vị.', 'err'); return; }
+  say($('gpsMsg'), 'Đang lấy vị trí, hãy đứng ngoài trời và chờ vài giây...', 'muted');
+  navigator.geolocation.getCurrentPosition((pos) => {
+    setCoords(pos.coords.latitude, pos.coords.longitude, true);
+    const acc = Math.round(pos.coords.accuracy);
+    say($('gpsMsg'), 'Đã lấy vị trí, sai số khoảng ±' + acc + ' m.' + (acc > 20 ? ' Sai số còn lớn, chờ một lúc rồi bấm lại.' : ''), acc > 20 ? 'err' : 'ok');
+  }, (e) => say($('gpsMsg'), e.code === 1 ? 'Bạn chưa cho phép định vị (hoặc trang chưa chạy HTTPS).' : 'Không lấy được vị trí, thử lại ngoài trời.', 'err'),
+  { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+}
+function openForm(p) {
+  editingId = p ? p.id : null;
+  $('formTitle').textContent = p ? 'Sửa địa điểm ' + p.code : 'Thêm địa điểm';
+  $('btnSave').textContent = p ? 'Lưu và gửi duyệt lại' : 'Gửi duyệt';
+  $('f_name').value = p ? p.name : ''; $('f_short').value = p ? p.short_description : ''; $('f_desc').value = p ? p.description : '';
+  $('f_thumb').value = p && p.thumbnail_url ? p.thumbnail_url : ''; $('f_radius').value = p ? p.trigger_radius_m : 25;
+  $('f_lat').value = ''; $('f_lng').value = ''; say($('saveMsg'), '', '');
+  if (p && p.review_status === 'APPROVED') say($('saveMsg'), 'Lưu ý: sau khi sửa, địa điểm sẽ tạm ẩn khỏi app cho tới khi được duyệt lại.', 'muted');
+  $('formBox').classList.remove('hidden');
+  initMap(); clearMarker(); setTimeout(() => map.invalidateSize(), 50);
+  if (p) setCoords(p.latitude, p.longitude, true);
+  countDesc(); $('formBox').scrollIntoView({ behavior: 'smooth' });
+}
+function closeForm() { editingId = null; $('formBox').classList.add('hidden'); }
+function countDesc() { const n = $('f_desc').value.trim().length, w = $('f_desc').value.trim().split(/\s+/).filter(Boolean).length; $('descCount').textContent = n + ' ký tự, ' + w + ' từ'; }
+
+async function save() {
+  const msg = $('saveMsg');
+  const body = {
+    name: $('f_name').value.trim(), shortDescription: $('f_short').value.trim(), description: $('f_desc').value.trim(),
+    latitude: parseFloat($('f_lat').value), longitude: parseFloat($('f_lng').value), triggerRadiusM: Math.round(Number($('f_radius').value)),
+  };
+  if ($('f_thumb').value.trim()) body.thumbnailUrl = $('f_thumb').value.trim();
+  const errs = [];
+  if (body.name.length < 2) errs.push('nhập tên địa điểm');
+  if (body.description.length < 20) errs.push('phần giới thiệu cần ít nhất 20 ký tự');
+  if (Number.isNaN(body.latitude) || Number.isNaN(body.longitude)) errs.push('chọn vị trí trên bản đồ');
+  if (!(body.triggerRadiusM >= 10 && body.triggerRadiusM <= 60)) errs.push('bán kính phải từ 10 đến 60 m');
+  if (body.thumbnailUrl && !/^(https?:\/\/|\/)/.test(body.thumbnailUrl)) errs.push('ảnh phải là đường dẫn http(s)');
+  if (errs.length) { say(msg, 'Chưa gửi: ' + errs.join('; ') + '.', 'err'); return; }
+  $('btnSave').disabled = true; say(msg, 'Đang gửi...', 'muted');
+  try {
+    const r = editingId ? await api('PUT', '/poi/owner/pois/' + editingId, body) : await api('POST', '/poi/owner/pois', body);
+    if (r.status !== 200 && r.status !== 201) { say(msg, errText(r), 'err'); return; }
+    closeForm(); await loadList();
+    say($('listMsg'), 'Đã gửi. Địa điểm đang chờ quản trị viên duyệt.', 'ok');
+  } catch { say(msg, 'Không kết nối được máy chủ.', 'err'); }
+  finally { $('btnSave').disabled = false; }
+}
+
+// ---------- Sự kiện ----------
+$('btnLogin').onclick = login;
+$('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+$('btnLogout').onclick = () => logout();
+$('btnAdd').onclick = () => openForm(null);
+$('btnCancel').onclick = closeForm;
+$('btnSave').onclick = save;
+$('btnGps').onclick = () => { initMap(); useMyGps(); };
+$('f_desc').addEventListener('input', countDesc);
+if (token) enter();
+})();
+</script>
+</body>
+</html>

@@ -5,27 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị POI - Chùa Linh Ứng</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
 <style>
-body{font-family:system-ui,sans-serif;max-width:960px;margin:16px auto;padding:0 12px;color:#222}
-h1{font-size:1.3rem} h2{font-size:1.05rem;margin:18px 0 6px}
-input,select,textarea,button{font:inherit;padding:7px 9px;margin:3px 0}
-input,select,textarea{width:100%;box-sizing:border-box}
-textarea{min-height:70px}
-button{cursor:pointer;width:auto} .primary{background:#b91c1c;color:#fff;border:0;border-radius:6px}
-nav button{border:1px solid #ccc;background:#fff;border-radius:6px 6px 0 0;margin-right:4px}
-nav button.on{background:#b91c1c;color:#fff;border-color:#b91c1c}
-.card{border:1px solid #ddd;border-radius:8px;padding:12px;margin:10px 0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
-table{border-collapse:collapse;width:100%;font-size:.92rem} td,th{border-bottom:1px solid #eee;padding:6px;text-align:left;vertical-align:top}
-.muted{color:#666;font-size:.9rem} .err{color:#b91c1c} .ok{color:#15803d}
+:root{
+  --bg:#f4f3ef; --surface:#ffffff; --surface-2:#eceae4; --ink:#1c1f1e; --muted:#5d6461; --line:#dcdad3;
+  --red:#8f1d22; --red-2:#b3262d; --on-red:#ffffff; --gold:#a8741c; --sea:#17656e; --ok:#1f7a3f; --warn:#8a5a00;
+  --ok-bg:#e3f3e8; --warn-bg:#fbefd6; --err-bg:#f8e1df;
+  --shadow:0 1px 2px rgba(20,20,20,.05), 0 4px 16px rgba(20,20,20,.06);
+  --font:"Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#121514; --surface:#1a1e1d; --surface-2:#232827; --ink:#e8eae6; --muted:#a3aba7; --line:#2d3331;
+  --red:#d9545a; --red-2:#e8686e; --on-red:#1b0b0c; --gold:#d8a64e; --sea:#5fb2ba; --ok:#6fd393; --warn:#f0c35a;
+  --ok-bg:#16301f; --warn-bg:#352a10; --err-bg:#3a1a19;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3); color-scheme:dark; } }
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.55}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1000}
+.topbar .wrap{display:flex;align-items:center;gap:12px;min-height:60px}
+.topbar .logo{width:34px;height:34px;flex:none}
+.topbar b{display:block;font-weight:800;font-size:1.02rem;letter-spacing:-.2px}
+.topbar small{display:block;color:var(--muted);font-size:.76rem}
+.topbar .sp{flex:1}
+.topbar a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:600}
+.topbar a:hover{color:var(--ink)}
+@media (max-width:560px){ .topbar a{display:none} }
+.wrap{max-width:var(--maxw,1000px);margin:0 auto;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px))}
+main.wrap{padding-block:22px 48px}
+h1{font-size:1.5rem;letter-spacing:-.4px;margin:0 0 6px;color:var(--ink)}
+h2{font-size:1.08rem;letter-spacing:-.2px;margin:26px 0 10px}
+a{color:var(--sea)}
+label{display:block;font-size:.86rem;color:var(--muted);font-weight:500}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:4px 0;width:100%;max-width:100%}
+input[type=checkbox]{width:auto;accent-color:var(--red)}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb, var(--sea) 45%, transparent);border-color:var(--sea)}
+textarea{min-height:80px;resize:vertical}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 14px;margin:4px 6px 4px 0;font-weight:600;width:auto}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.55;cursor:default}
+button.primary,.primary{background:var(--red);border-color:var(--red);color:var(--on-red)}
+button.primary:hover{background:var(--red-2);border-color:var(--red-2)}
+button.alt{background:var(--surface);color:var(--red);border-color:var(--red)}
+:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0;box-shadow:var(--shadow);overflow-x:auto}
+.muted{color:var(--muted)} .err{color:var(--red)} .ok{color:var(--ok)}
 .hidden{display:none!important}
-#pickMap{height:340px;border-radius:8px;margin:8px 0}
-pre{background:#f6f6f6;padding:8px;border-radius:6px;overflow:auto;max-height:260px;font-size:.85rem}
-label{font-size:.88rem;color:#444}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th{font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:700;white-space:nowrap}
+td,th{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+tr:last-child td{border-bottom:0}
+td button{padding:6px 10px;font-size:.84rem;margin:2px 4px 2px 0}
+pre{background:var(--surface-2);color:var(--ink);padding:12px;border-radius:10px;overflow:auto;max-height:280px;font-size:.84rem}
+nav.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:4px;background:var(--surface-2);border-radius:12px;margin:10px 0 4px}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{flex:none;border:0;background:none;margin:0;padding:8px 14px;border-radius:9px;color:var(--muted);white-space:nowrap}
+nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
+.leaflet-container{font-family:var(--font)}
+
+#loginBox{max-width:420px;margin:40px auto}
+#loginBox b{display:block;font-size:1.1rem;margin-bottom:8px}
+#main > p:first-child{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px}
+#pickMap{height:360px;border-radius:12px;margin:10px 0;border:1px solid var(--line)}
+#tab-list > button:first-child{margin-bottom:8px}
+#saveMsg,#pubMsg,#opMsg,#ownerMsg,#listMsg{margin-top:8px}
 </style>
 </head>
 <body>
-<h1>Quản trị POI - Chùa Linh Ứng</h1>
+<header class="topbar" style="--maxw:1080px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M5 15.5 17 8l12 7.5h-3.2l-8.8-5.4-8.8 5.4zM8.5 16.5h17v1.8h-17zM10 19.5h2v7h-2zM16 19.5h2v7h-2zM22 19.5h2v7h-2zM7.5 27h19v1.8h-19z" fill="#f3d38e"/></svg><div><b>Quản trị POI</b><small>Chùa Linh Ứng · Biên tập nội dung</small></div><span class="sp"></span><a href="/">Web App du khách</a><a href="/owner.html">Trang chủ quán</a></div></header>
+<main class="wrap" style="--maxw:1080px">
 
 <section id="loginBox" class="card">
   <b>Đăng nhập (Admin hoặc Biên tập nội dung)</b>
@@ -37,11 +87,12 @@ label{font-size:.88rem;color:#444}
 
 <section id="main" class="hidden">
   <p>Đã đăng nhập: <b id="who"></b> <button id="btnLogout">Đăng xuất</button></p>
-  <nav>
+  <nav class="tabs">
     <button data-tab="list" class="on">Danh sách POI</button>
     <button data-tab="edit">Thêm / Sửa POI</button>
     <button data-tab="csv">Nhập từ CSV</button>
     <button data-tab="owners">Duyệt chủ quán</button>
+    <button data-tab="ownerpois">Duyệt POI chủ quán</button>
     <button data-tab="publish">Publish</button>
   </nav>
 
@@ -56,7 +107,7 @@ label{font-size:.88rem;color:#444}
     <div class="grid">
       <div><label>Mã POI (chữ, số, _ -)</label><input id="f_code" placeholder="VD: TUONG_PHAT_BA"></div>
       <div><label>Loại</label>
-        <select id="f_cat"><option value="1">Tượng</option><option value="2">Chánh điện / công trình</option><option value="3">Tiện ích</option></select></div>
+        <select id="f_cat"><option value="1">Tượng</option><option value="2">Chánh điện / công trình</option><option value="3">Tiện ích</option><option value="4">Quán / cửa hàng (chủ quán)</option></select></div>
       <div><label>Bán kính kích hoạt (m)</label><input id="f_radius" type="number" value="25" min="5" max="200"></div>
       <div><label>Ưu tiên (số lớn = ưu tiên)</label><input id="f_priority" type="number" value="0"></div>
       <div><label>Thứ tự hiển thị</label><input id="f_order" type="number" value="0"></div>
@@ -78,14 +129,14 @@ label{font-size:.88rem;color:#444}
     <label>Name</label><input id="en_name">
     <label>Short description</label><input id="en_short">
     <label>Description</label><textarea id="en_desc"></textarea>
-    <label>Ảnh thumbnail (URL, tùy chọn)</label><input id="f_thumb" placeholder="https://...">
+    <label>Ảnh đại diện (tùy chọn): <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...</label><input id="f_thumb" placeholder="/img/tuong-phat-ba.jpg">
     <p><button id="btnSave" class="primary">Lưu POI</button> <button id="btnNew">Làm mới form</button></p>
     <div id="saveMsg"></div>
   </div>
 
   <div id="tab-csv" class="card hidden">
     <h2>Nhập nhiều POI từ file CSV</h2>
-    <p class="muted">Cột: code, name_vi, short_vi, desc_vi, name_en, short_en, desc_en, lat, lng, radius, category (1 Tượng, 2 Chánh điện, 3 Tiện ích), priority, order, status. File lưu UTF-8; dấu phân cách dấu phẩy hoặc chấm phẩy đều được. POI đã có mã trùng sẽ được cập nhật.</p>
+    <p class="muted">Cột: code, name_vi, short_vi, desc_vi, name_en, short_en, desc_en, lat, lng, radius, category (1 Tượng, 2 Chánh điện, 3 Tiện ích, 4 Quán), priority, order, status, thumbnail (đường dẫn ảnh, ví dụ <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...). File lưu UTF-8; dấu phân cách dấu phẩy hoặc chấm phẩy đều được. POI đã có mã trùng sẽ được cập nhật.</p>
     <button id="btnTemplate">Tải file CSV mẫu</button>
     <input id="csvFile" type="file" accept=".csv,text/csv">
     <div id="csvPreview"></div>
@@ -100,6 +151,15 @@ label{font-size:.88rem;color:#444}
     <button id="btnOwners">Tải danh sách</button>
     <table id="ownerTable"></table>
     <div id="ownerMsg" class="muted"></div>
+  </div>
+
+  <div id="tab-ownerpois" class="card hidden">
+    <h2>POI do chủ quán gửi</h2>
+    <p class="muted">Chủ quán thêm POI tại <b>/owner.html</b>. Duyệt thì POI chuyển sang PUBLISHED và tự xếp việc dịch + tạo audio; sau đó vào tab <b>Publish</b> để đưa lên app. Từ chối bắt buộc ghi lý do. Chủ quán sửa POI thì POI quay về chờ duyệt.</p>
+    <select id="opFilter" style="width:auto"><option value="PENDING">Đang chờ duyệt</option><option value="">Tất cả</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Đã từ chối</option></select>
+    <button id="btnOwnerPois">Tải danh sách</button>
+    <table id="opTable"></table>
+    <div id="opMsg" class="muted"></div>
   </div>
 
   <div id="tab-publish" class="card hidden">
@@ -117,6 +177,8 @@ label{font-size:.88rem;color:#444}
     <table id="verTable"></table>
   </div>
 </section>
+
+</main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -163,11 +225,12 @@ function enter() { $('loginBox').classList.add('hidden'); $('main').classList.re
 // ---------- Tab ----------
 function tab(name) {
   document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
-  ['list', 'edit', 'csv', 'owners', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
+  ['list', 'edit', 'csv', 'owners', 'ownerpois', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
   clearInterval(jobTimer);
   if (name === 'edit') { initMap(); setTimeout(() => map.invalidateSize(), 50); }
   if (name === 'publish') { loadVersions(); loadJobs(); jobTimer = setInterval(loadJobs, 5000); }
   if (name === 'owners') loadOwners();
+  if (name === 'ownerpois') loadOwnerPois();
   if (name === 'list') loadList();
 }
 
@@ -182,7 +245,8 @@ async function loadList() {
   tb.appendChild(head);
   pois.forEach((p) => {
     const tr = document.createElement('tr');
-    [p.code, p.name || '(chưa có nội dung)', p.status, String(p.translated_langs), p.trigger_radius_m + ' m'].forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+    [p.code, (p.name || '(chưa có nội dung)') + (p.owner_name ? ' [chủ quán: ' + p.owner_name + ']' : ''),
+     p.status + (p.review_status && p.review_status !== 'NONE' ? ' / duyệt: ' + p.review_status : ''), String(p.translated_langs), p.trigger_radius_m + ' m'].forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
     const td = document.createElement('td');
     const be = document.createElement('button'); be.textContent = 'Sửa'; be.onclick = () => editPoi(p.id);
     const ba = document.createElement('button'); ba.textContent = 'Lưu trữ'; ba.onclick = () => archivePoi(p);
@@ -334,12 +398,13 @@ function csvToData(rows) {
   const head = rows[0].map((h) => h.trim().toLowerCase());
   const col = (...names) => head.findIndex((h) => names.includes(h));
   const ix = { code: col('code'), nv: col('name_vi'), sv: col('short_vi'), dv: col('desc_vi'), ne: col('name_en'), se: col('short_en'), de: col('desc_en'),
-    lat: col('lat', 'latitude'), lng: col('lng', 'lon', 'longitude'), rad: col('radius'), cat: col('category'), pri: col('priority'), ord: col('order'), st: col('status') };
+    lat: col('lat', 'latitude'), lng: col('lng', 'lon', 'longitude'), rad: col('radius'), cat: col('category'), pri: col('priority'), ord: col('order'), st: col('status'), img: col('thumbnail', 'image', 'thumbnail_url') };
   const g = (r, i) => (i >= 0 && r[i] !== undefined ? r[i].trim() : '');
   return rows.slice(1).map((r) => ({
     code: g(r, ix.code), categoryId: num(g(r, ix.cat), 1), latitude: parseFloat(g(r, ix.lat).replace(',', '.')), longitude: parseFloat(g(r, ix.lng).replace(',', '.')),
     triggerRadiusM: num(g(r, ix.rad), 25), priority: num(g(r, ix.pri), 0), displayOrder: num(g(r, ix.ord), 0),
     status: ['DRAFT', 'PUBLISHED'].includes(g(r, ix.st).toUpperCase()) ? g(r, ix.st).toUpperCase() : 'PUBLISHED',
+    thumbnailUrl: g(r, ix.img),
     vi: { name: g(r, ix.nv), short: g(r, ix.sv), desc: g(r, ix.dv) }, en: { name: g(r, ix.ne), short: g(r, ix.se), desc: g(r, ix.de) },
   }));
 }
@@ -381,10 +446,10 @@ async function importCsv() {
 function downloadTemplate() {
   const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
   const rows = [
-    ['code', 'name_vi', 'short_vi', 'desc_vi', 'name_en', 'short_en', 'desc_en', 'lat', 'lng', 'radius', 'category', 'priority', 'order', 'status'],
-    ['TUONG_PHAT_BA', 'Tượng Phật Bà Quan Âm', 'Tượng Phật Bà cao nhất Việt Nam', 'Tượng Phật Bà Quan Âm là biểu tượng của chùa. Tượng nhìn ra biển, cầu mong bình an cho ngư dân. (Nội dung mẫu, hãy thay bằng nội dung thật.)', 'Lady Buddha statue', 'The tallest Lady Buddha statue in Vietnam', 'The Lady Buddha is the symbol of the pagoda. It faces the sea and blesses the fishermen. (Sample text, replace with real content.)', '16.1000', '108.2780', '30', '1', '10', '1', 'PUBLISHED'],
-    ['CHANH_DIEN', 'Chánh điện', 'Nơi thờ chính của chùa', 'Chánh điện là nơi thờ Đức Phật. Du khách giữ yên lặng và ăn mặc lịch sự. (Nội dung mẫu.)', 'Main hall', 'The main worship hall', 'The main hall enshrines the Buddha. Please stay quiet and dress modestly. (Sample text.)', '16.0996', '108.2772', '25', '2', '5', '2', 'PUBLISHED'],
-    ['CONG_TAM_QUAN', 'Cổng tam quan', 'Cổng vào chùa', 'Cổng tam quan là lối vào chùa. (Nội dung mẫu.)', 'Triple gate', 'The pagoda entrance', 'The triple gate is the entrance to the pagoda. (Sample text.)', '16.0990', '108.2768', '25', '3', '0', '3', 'PUBLISHED'],
+    ['code', 'name_vi', 'short_vi', 'desc_vi', 'name_en', 'short_en', 'desc_en', 'lat', 'lng', 'radius', 'category', 'priority', 'order', 'status', 'thumbnail'],
+    ['TUONG_PHAT_BA', 'Tượng Phật Bà Quan Âm', 'Tượng Phật Bà cao nhất Việt Nam', 'Tượng Phật Bà Quan Âm là biểu tượng của chùa. Tượng nhìn ra biển, cầu mong bình an cho ngư dân. (Nội dung mẫu, hãy thay bằng nội dung thật.)', 'Lady Buddha statue', 'The tallest Lady Buddha statue in Vietnam', 'The Lady Buddha is the symbol of the pagoda. It faces the sea and blesses the fishermen. (Sample text, replace with real content.)', '16.1000', '108.2780', '30', '1', '10', '1', 'PUBLISHED', '/img/tuong-phat-ba.jpg'],
+    ['CHANH_DIEN', 'Chánh điện', 'Nơi thờ chính của chùa', 'Chánh điện là nơi thờ Đức Phật. Du khách giữ yên lặng và ăn mặc lịch sự. (Nội dung mẫu.)', 'Main hall', 'The main worship hall', 'The main hall enshrines the Buddha. Please stay quiet and dress modestly. (Sample text.)', '16.0996', '108.2772', '25', '2', '5', '2', 'PUBLISHED', '/img/chanh-dien.jpg'],
+    ['CONG_TAM_QUAN', 'Cổng tam quan', 'Cổng vào chùa', 'Cổng tam quan là lối vào chùa. (Nội dung mẫu.)', 'Triple gate', 'The pagoda entrance', 'The triple gate is the entrance to the pagoda. (Sample text.)', '16.0990', '108.2768', '25', '3', '0', '3', 'PUBLISHED', ''],
   ];
   const csv = '\uFEFF' + rows.map((r) => r.map(q).join(',')).join('\r\n');
   const a = document.createElement('a');
@@ -460,6 +525,50 @@ async function revealId(id) {
   alert(r.status === 200 ? (r.data.idNumber || 'Không đọc được (đã bị xóa hoặc sai khóa mã hóa).') : 'Lỗi: ' + errOf(r));
 }
 
+// ---------- Duyệt POI chủ quán ----------
+async function loadOwnerPois() {
+  const f = $('opFilter').value;
+  const r = await api('GET', '/poi/admin/owner-pois' + (f ? '?review=' + f : ''));
+  const tb = $('opTable'); tb.innerHTML = '';
+  if (r.status !== 200) { say($('opMsg'), 'Lỗi: ' + errOf(r), 'err'); return; }
+  const h = document.createElement('tr');
+  ['Chủ quán', 'Tên / mô tả ngắn', 'Giới thiệu', 'Vị trí', 'Trạng thái', 'Gửi lúc', ''].forEach((x) => { const th = document.createElement('th'); th.textContent = x; h.appendChild(th); });
+  tb.appendChild(h);
+  r.data.forEach((p) => {
+    const tr = document.createElement('tr');
+    const cell = (text) => { const td = document.createElement('td'); td.textContent = text; tr.appendChild(td); return td; };
+    cell(p.owner_name || p.owner_id);
+    cell(p.name + (p.short_description ? ' — ' + p.short_description : '') + ' (' + p.code + ')');
+    const dsc = cell(p.description); dsc.style.maxWidth = '280px'; dsc.style.whiteSpace = 'pre-wrap';
+    const loc = cell('');
+    const a = document.createElement('a'); a.target = '_blank'; a.rel = 'noopener';
+    a.href = 'https://www.openstreetmap.org/?mlat=' + p.latitude + '&mlon=' + p.longitude + '#map=19/' + p.latitude + '/' + p.longitude;
+    a.textContent = Number(p.latitude).toFixed(5) + ', ' + Number(p.longitude).toFixed(5); loc.appendChild(a);
+    loc.appendChild(document.createTextNode(' (r=' + p.trigger_radius_m + 'm)'));
+    if (p.thumbnail_url) { const im = document.createElement('a'); im.href = p.thumbnail_url; im.target = '_blank'; im.rel = 'noopener noreferrer'; im.textContent = ' ảnh'; loc.appendChild(im); }
+    cell(p.review_status + ' / ' + p.status + (p.review_note ? ': ' + p.review_note : ''));
+    cell(p.submitted_at ? new Date(p.submitted_at).toLocaleString('vi-VN') : '');
+    const td = document.createElement('td');
+    if (p.review_status === 'PENDING') {
+      const ok = document.createElement('button'); ok.textContent = 'Duyệt'; ok.onclick = () => reviewOwnerPoi(p, true);
+      const no = document.createElement('button'); no.textContent = 'Từ chối'; no.onclick = () => reviewOwnerPoi(p, false);
+      td.appendChild(ok); td.appendChild(no);
+    }
+    tr.appendChild(td); tb.appendChild(tr);
+  });
+  say($('opMsg'), r.data.length + ' POI.', 'muted');
+}
+async function reviewOwnerPoi(p, approve) {
+  const note = prompt(approve ? 'Ghi chú cho chủ quán (không bắt buộc):' : 'Lý do từ chối (bắt buộc, ít nhất 3 ký tự):');
+  if (note === null) return;
+  if (!approve && note.trim().length < 3) { alert('Cần ghi lý do từ chối.'); return; }
+  const r = await api('POST', '/poi/admin/owner-pois/' + p.id + (approve ? '/approve' : '/reject'), { note: note.trim() || undefined });
+  if (approve && r.status === 200) say($('opMsg'), 'Đã duyệt ' + p.code + '. Đã xếp ' + r.data.translateQueued + ' việc dịch, ' + r.data.ttsQueued + ' việc tạo audio. Vào tab Publish khi xong.', 'ok');
+  else if (!approve && r.status === 204) say($('opMsg'), 'Đã từ chối ' + p.code + '.', 'ok');
+  else { alert('Lỗi: ' + errOf(r)); }
+  loadOwnerPois();
+}
+
 // ---------- Audio tự động ----------
 async function regenerate() {
   if (!confirm('Xếp việc dịch và tạo audio cho mọi POI chưa có? (không ghi đè bản dịch tay)')) return;
@@ -484,6 +593,7 @@ $('btnReload').onclick = loadList; $('btnGps').onclick = useMyGps; $('btnSave').
 $('btnTemplate').onclick = downloadTemplate; $('btnImport').onclick = importCsv;
 $('csvFile').onchange = (e) => { const f = e.target.files[0]; if (f) f.text().then(previewCsv); };
 $('btnPublish').onclick = publishNow; $('btnVerify').onclick = verify;
+$('btnOwnerPois').onclick = loadOwnerPois; $('opFilter').onchange = loadOwnerPois;
 $('btnOwners').onclick = loadOwners; $('ownerFilter').onchange = loadOwners; $('btnRegen').onclick = regenerate; $('btnJobs').onclick = loadJobs;
 if (token) { $('who').textContent = 'quản trị'; enter(); }
 })();
