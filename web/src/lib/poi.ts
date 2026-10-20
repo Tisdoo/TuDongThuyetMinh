@@ -1,5 +1,5 @@
-import type { Language, Poi, PoiTranslation } from '../api/types';
-import { DEFAULT_LANGS } from './i18n';
+import type { Dataset, Language, Poi, PoiTranslation } from '../api/types';
+import { LANGS } from '../i18n';
 
 /** Lấy nội dung POI theo ngôn ngữ; thiếu bản dịch thì rơi về en, rồi vi, rồi bất kỳ. */
 export function poiContent(poi: Poi, lang: string): { c: PoiTranslation | null; code: string | null; fallback: boolean } {
@@ -17,6 +17,11 @@ export function narrationText(c: PoiTranslation): string {
 }
 
 export function languageName(code: string, languages: Language[] | undefined): string {
-  const l = (languages?.length ? languages : DEFAULT_LANGS).find((x) => x.code === code);
+  const l = LANGS.find((x) => x.code === code) ?? languages?.find((x) => x.code === code);
   return l ? l.nativeName || l.name : code;
+}
+
+/** Mã loại điểm (STATUE, HALL, FACILITY, SHOP...) để chọn hình minh họa và bộ lọc. */
+export function categoryOf(poi: Poi, ds: Dataset | null): string {
+  return ds?.categories.find((c) => c.id === poi.categoryId)?.code ?? 'OTHER';
 }

@@ -20,7 +20,7 @@ export interface PoiTranslation {
   audioUrl: string | null; audioDurationSec: number | null;
 }
 export interface Poi {
-  id: string; code: string; categoryId: string | null;
+  id: string; code: string; categoryId: number | null;
   lat: number; lng: number; triggerRadiusM: number; priority: number;
   thumbnailUrl: string | null;
   media: Array<{ url: string; caption: string | null }>;
@@ -30,7 +30,7 @@ export interface Language { code: string; name: string; nativeName: string | nul
 export interface Dataset {
   version: number; generatedAt?: string;
   languages: Language[];
-  categories: Array<{ id: string; code: string; iconUrl: string | null; color: string | null }>;
+  categories: Array<{ id: number; code: string; iconUrl: string | null; color: string | null }>;
   pois: Poi[];
   tours: unknown[];
 }

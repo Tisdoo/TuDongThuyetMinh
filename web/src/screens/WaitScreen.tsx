@@ -13,7 +13,7 @@ interface Props {
   onTimeout: () => void;
 }
 
-/** Trang /payment/return: polling /auth/exchange mỗi 3 giây (202 = chưa trả xong, 200 = có token). */
+/** Trang /payment/return: hỏi /auth/exchange mỗi 3 giây (202 = chưa trả xong, 200 = có token). */
 export function WaitScreen({ authCode, onToken, onInvalid, onTimeout }: Props) {
   const { t, lang } = useI18n();
   const [attempt, setAttempt] = useState(1);
@@ -38,11 +38,10 @@ export function WaitScreen({ authCode, onToken, onInvalid, onTimeout }: Props) {
   }, [authCode]);
 
   return (
-    <section>
-      <h1>{t('waitTitle')}</h1>
-      <div className="spinner" />
-      <p>{t('waitText')}</p>
-      <p className="muted">{attempt}/{MAX_TRIES}</p>
-    </section>
+    <div className="step center">
+      <div className="tide" aria-hidden="true"><span style={{ transform: `scaleX(${attempt / MAX_TRIES})` }} /></div>
+      <h1 className="serif">{t('waitTitle')}</h1>
+      <p className="muted">{t('waitText')}</p>
+    </div>
   );
 }

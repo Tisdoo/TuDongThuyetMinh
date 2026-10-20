@@ -6,6 +6,9 @@ export const KEYS = {
   pendingAuth: 'll_pending_auth', // authCode của đơn online (sessionStorage)
   pendingMomo: 'll_pending_momo', // đơn MoMo QR đang chờ (sessionStorage)
   pendingCash: 'll_pending_cash', // đơn tiền mặt đang chờ (sessionStorage)
+  pendingOrder: 'll_pending_order', // mã đơn + hình thức của đơn đang chờ (sessionStorage)
+  ticket: 'll_ticket', // thông tin vé đã mở khóa, hiện ở tab Vé
+  autoplay: 'll_autoplay',
 } as const;
 
 type Store = 'local' | 'session';

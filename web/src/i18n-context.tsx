@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { normalizeLang, translate, type I18nKey } from './lib/i18n';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { normalizeLang, translate, type I18nKey } from './i18n';
 import { getItem, KEYS, setItem } from './lib/storage';
 
 interface I18nCtx {
@@ -11,11 +11,8 @@ const Ctx = createContext<I18nCtx | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState(() => getItem(KEYS.lang) ?? normalizeLang(navigator.language));
-  const setLang = useCallback((code: string) => {
-    setItem(KEYS.lang, code);
-    setLangState(code);
-    document.documentElement.lang = code;
-  }, []);
+  const setLang = useCallback((code: string) => { setItem(KEYS.lang, code); setLangState(code); }, []);
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   const t = useCallback((key: I18nKey, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -1,9 +1,9 @@
 {
-  "name": "Thuyết minh Chùa Linh Ứng",
+  "name": "Linh Ứng Guide",
   "short_name": "Linh Ứng",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#faf7f2",
-  "theme_color": "#b91c1c",
+  "background_color": "#F7F9F9",
+  "theme_color": "#0F3B44",
   "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
 }
