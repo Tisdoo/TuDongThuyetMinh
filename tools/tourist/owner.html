@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Địa điểm của tôi - Chủ địa điểm</title>
+<title>Quán của tôi - Ẩm thực Quận 5</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,10 +81,10 @@ label{margin-top:12px}
 </style>
 </head>
 <body>
-<header class="topbar" style="--maxw:760px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M5 15.5 17 8l12 7.5h-3.2l-8.8-5.4-8.8 5.4zM8.5 16.5h17v1.8h-17zM10 19.5h2v7h-2zM16 19.5h2v7h-2zM22 19.5h2v7h-2zM7.5 27h19v1.8h-19z" fill="#f3d38e"/></svg><div><b>Địa điểm của tôi</b><small>Chùa Linh Ứng · Chủ địa điểm</small></div><span class="sp"></span><a href="/owner-register.html">Đăng ký</a><a href="/">Web App du khách</a></div></header>
+<header class="topbar" style="--maxw:760px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M6 17h22a11 9 0 0 1-22 0z" fill="#f3d38e"/><path d="M12 28h10v1.8H12z" fill="#f3d38e"/><path d="M19 13.5 28.5 5M22 14l7.5-6" stroke="#f3d38e" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13c-1.4-1.6 1.4-2.6 0-4.4M15 13c-1.4-1.6 1.4-2.6 0-4.4" stroke="#f3d38e" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/></svg><div><b>Quán của tôi</b><small>Ẩm thực Quận 5 · Chủ quán</small></div><span class="sp"></span><a href="/owner-register.html">Đăng ký</a><a href="/">Web App du khách</a></div></header>
 <main class="wrap" style="--maxw:760px">
-<h1>Địa điểm của tôi</h1>
-<p class="muted">Dành cho chủ địa điểm đã được duyệt. Chưa có tài khoản? <a href="/owner-register.html">Đăng ký tại đây</a>.</p>
+<h1>Quán của tôi</h1>
+<p class="muted">Dành cho chủ quán đã được duyệt. Chưa có tài khoản? <a href="/owner-register.html">Đăng ký tại đây</a>.</p>
 
 <section id="loginBox" class="card">
   <label>Tên đăng nhập<input id="user" autocomplete="username"></label>
@@ -97,17 +97,21 @@ label{margin-top:12px}
   <div class="top"><span>Xin chào <b id="who"></b></span><button id="btnLogout" class="alt" style="margin-top:0">Đăng xuất</button></div>
 
   <div class="card">
-    <div class="top"><h2 style="margin:0">Danh sách địa điểm</h2><button id="btnAdd" style="margin-top:0">+ Thêm địa điểm</button></div>
+    <div class="top"><h2 style="margin:0">Danh sách quán</h2><button id="btnAdd" style="margin-top:0">+ Thêm quán</button></div>
     <div id="list"></div>
     <div id="listMsg" class="muted"></div>
   </div>
 
   <div id="formBox" class="card hidden">
-    <h2 id="formTitle">Thêm địa điểm</h2>
-    <p class="muted">Địa điểm mới hoặc vừa sửa sẽ <b>chờ quản trị viên duyệt</b> trước khi hiện trên app du khách. Chỉ cần nhập tiếng Việt, hệ thống tự dịch và tạo audio sau khi duyệt.</p>
-    <label>Tên địa điểm<input id="f_name" maxlength="200"></label>
-    <label>Mô tả ngắn (một câu, hiện trong danh sách)<input id="f_short" maxlength="500"></label>
-    <label>Giới thiệu (20 đến 3000 ký tự; nên 40 đến 80 từ, câu ngắn để giọng đọc nghe rõ)<textarea id="f_desc" maxlength="3000"></textarea></label>
+    <h2 id="formTitle">Thêm quán</h2>
+    <p class="muted">Quán mới hoặc vừa sửa sẽ <b>chờ quản trị viên duyệt</b> trước khi hiện trên app du khách. Chỉ cần nhập tiếng Việt, hệ thống tự dịch và tạo audio sau khi duyệt.</p>
+    <label>Tên quán<input id="f_name" maxlength="200" placeholder="VD: Hủ tiếu Hà Tôn Quyền"></label>
+    <label>Loại món chính của quán<select id="f_cat">
+      <option value="SHOP">Quán ăn (nhiều món)</option><option value="NOODLE">Mì · hủ tiếu · bún</option><option value="RICE">Cơm · cháo</option>
+      <option value="DIMSUM">Dimsum · điểm tâm</option><option value="DESSERT">Chè · tráng miệng</option><option value="DRINK">Trà · đồ uống</option><option value="SNACK">Ăn vặt</option>
+    </select></label>
+    <label>Mô tả ngắn (món chính, giá tham khảo)<input id="f_short" maxlength="500" placeholder="VD: Hủ tiếu, sủi cảo · 45.000 - 70.000đ"></label>
+    <label>Lời thuyết minh về quán (20 đến 3000 ký tự; nên 40 đến 80 từ, câu ngắn để giọng đọc nghe rõ)<textarea id="f_desc" maxlength="3000" placeholder="Quán mở từ năm nào, món đặc trưng, nên gọi gì, giờ mở cửa, lúc nào vắng khách..."></textarea></label>
     <div class="muted" id="descCount"></div>
     <label>Ảnh đại diện (đường dẫn https, không bắt buộc)<input id="f_thumb" placeholder="https://..."></label>
 
@@ -147,7 +151,7 @@ const ERR = {
   INVALID_CREDENTIALS: 'Sai tên đăng nhập hoặc mật khẩu, hoặc hồ sơ chưa được duyệt.',
   TOO_MANY_ATTEMPTS: 'Nhập sai quá nhiều lần, hãy thử lại sau 15 phút.',
   VALIDATION_ERROR: 'Thông tin chưa hợp lệ, hãy kiểm tra lại các ô.',
-  OWNER_POI_LIMIT: 'Bạn đã đạt số địa điểm tối đa.',
+  OWNER_POI_LIMIT: 'Bạn đã đạt số quán tối đa.',
   POI_NOT_FOUND: 'Không tìm thấy địa điểm (có thể đã bị xóa).',
   FORBIDDEN: 'Tài khoản này không phải tài khoản chủ địa điểm.',
 };
@@ -225,7 +229,7 @@ async function loadList() {
     a.appendChild(be); a.appendChild(bd); d.appendChild(a);
     box.appendChild(d);
   });
-  say($('listMsg'), items.length ? items.length + ' / ' + r.data.limit + ' địa điểm.' : 'Bạn chưa có địa điểm nào. Bấm "+ Thêm địa điểm" để bắt đầu.', 'muted');
+  say($('listMsg'), items.length ? items.length + ' / ' + r.data.limit + ' quán.' : 'Bạn chưa có quán nào. Bấm "+ Thêm quán" để bắt đầu.', 'muted');
   $('btnAdd').disabled = items.length >= r.data.limit;
 }
 async function removePoi(p) {
@@ -239,7 +243,7 @@ async function removePoi(p) {
 // ---------- Form + bản đồ ----------
 function initMap() {
   if (map) return;
-  map = L.map('map').setView([16.1, 108.277], 16);
+  map = L.map('map').setView([10.7545, 106.6625], 16); // khu Chợ Lớn, Quận 5
   const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
   const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
   osm.addTo(map);
@@ -272,9 +276,9 @@ function useMyGps() {
 }
 function openForm(p) {
   editingId = p ? p.id : null;
-  $('formTitle').textContent = p ? 'Sửa địa điểm ' + p.code : 'Thêm địa điểm';
+  $('formTitle').textContent = p ? 'Sửa quán ' + p.code : 'Thêm quán';
   $('btnSave').textContent = p ? 'Lưu và gửi duyệt lại' : 'Gửi duyệt';
-  $('f_name').value = p ? p.name : ''; $('f_short').value = p ? p.short_description : ''; $('f_desc').value = p ? p.description : '';
+  $('f_cat').value = (p && p.category_code) || 'SHOP'; $('f_name').value = p ? p.name : ''; $('f_short').value = p ? p.short_description : ''; $('f_desc').value = p ? p.description : '';
   $('f_thumb').value = p && p.thumbnail_url ? p.thumbnail_url : ''; $('f_radius').value = p ? p.trigger_radius_m : 25;
   $('f_lat').value = ''; $('f_lng').value = ''; say($('saveMsg'), '', '');
   if (p && p.review_status === 'APPROVED') say($('saveMsg'), 'Lưu ý: sau khi sửa, địa điểm sẽ tạm ẩn khỏi app cho tới khi được duyệt lại.', 'muted');
@@ -289,12 +293,12 @@ function countDesc() { const n = $('f_desc').value.trim().length, w = $('f_desc'
 async function save() {
   const msg = $('saveMsg');
   const body = {
-    name: $('f_name').value.trim(), shortDescription: $('f_short').value.trim(), description: $('f_desc').value.trim(),
+    categoryCode: $('f_cat').value, name: $('f_name').value.trim(), shortDescription: $('f_short').value.trim(), description: $('f_desc').value.trim(),
     latitude: parseFloat($('f_lat').value), longitude: parseFloat($('f_lng').value), triggerRadiusM: Math.round(Number($('f_radius').value)),
   };
   if ($('f_thumb').value.trim()) body.thumbnailUrl = $('f_thumb').value.trim();
   const errs = [];
-  if (body.name.length < 2) errs.push('nhập tên địa điểm');
+  if (body.name.length < 2) errs.push('nhập tên quán');
   if (body.description.length < 20) errs.push('phần giới thiệu cần ít nhất 20 ký tự');
   if (Number.isNaN(body.latitude) || Number.isNaN(body.longitude)) errs.push('chọn vị trí trên bản đồ');
   if (!(body.triggerRadiusM >= 10 && body.triggerRadiusM <= 60)) errs.push('bán kính phải từ 10 đến 60 m');
@@ -305,7 +309,7 @@ async function save() {
     const r = editingId ? await api('PUT', '/poi/owner/pois/' + editingId, body) : await api('POST', '/poi/owner/pois', body);
     if (r.status !== 200 && r.status !== 201) { say(msg, errText(r), 'err'); return; }
     closeForm(); await loadList();
-    say($('listMsg'), 'Đã gửi. Địa điểm đang chờ quản trị viên duyệt.', 'ok');
+    say($('listMsg'), 'Đã gửi. Quán đang chờ quản trị viên duyệt.', 'ok');
   } catch { say(msg, 'Không kết nối được máy chủ.', 'err'); }
   finally { $('btnSave').disabled = false; }
 }

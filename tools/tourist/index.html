@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-/* Bảng màu lấy từ chùa: sơn son, đồng thếp, biển Sơn Trà, đá granite. */
+/* Bảng màu lấy từ phố Chợ Lớn: đỏ đèn lồng, vàng hoành phi, xanh ngói cũ, nền giấy dó. */
 :root{
   --bar:60px; --nav:64px;
   --bg:#f4f3ef; --surface:#ffffff; --surface-2:#eceae4; --ink:#1c1f1e; --muted:#5d6461; --line:#dcdad3;
@@ -105,6 +105,11 @@ img{max-width:100%}
 .chips::-webkit-scrollbar{display:none}
 .chips button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:.88rem;white-space:nowrap}
 .chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* Khối "Cách hoạt động" */
+.how{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.how li{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:4px}
+.how .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--red);color:var(--on-red);font-weight:800;font-size:.86rem}
 
 /* Thẻ POI kiểu Google */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:16px;padding-bottom:32px}
@@ -226,8 +231,8 @@ img{max-width:100%}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion: reduce){ .spinner{animation-duration:3s} .poi{transition:none} }
 .welcome{position:relative;overflow:hidden;color:#fff;border-radius:18px;padding:26px 22px 30px;margin-bottom:6px;
-  background:radial-gradient(120% 90% at 85% 10%, rgba(246,217,160,.55), transparent 55%), linear-gradient(160deg,#1b4f57 0%,#245a4c 55%,#0d363b 100%)}
-.welcome::after{content:"";position:absolute;left:-10%;right:-10%;bottom:-48px;height:80px;background:#0c2a2c;border-radius:50% 50% 0 0;opacity:.55}
+  background:radial-gradient(120% 90% at 85% 10%, rgba(246,190,110,.55), transparent 55%), linear-gradient(160deg,#5a1a1f 0%,#3a1418 55%,#1d0f14 100%)}
+.welcome::after{content:"";position:absolute;left:-10%;right:-10%;bottom:-48px;height:80px;background:#140a0d;border-radius:50% 50% 0 0;opacity:.55}
 .welcome > *{position:relative;z-index:1}
 .welcome .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#f3d38e}
 .welcome .eyebrow::before{content:"";width:22px;height:2px;background:#f3d38e}
@@ -269,7 +274,7 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 
 <header class="appbar">
   <button class="brand" id="brandBtn" type="button">
-    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M5 15.5 17 8l12 7.5h-3.2l-8.8-5.4-8.8 5.4zM8.5 16.5h17v1.8h-17zM10 19.5h2v7h-2zM16 19.5h2v7h-2zM22 19.5h2v7h-2zM7.5 27h19v1.8h-19z" fill="#f3d38e"/></svg>
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M6 17h22a11 9 0 0 1-22 0z" fill="#f3d38e"/><path d="M12 28h10v1.8H12z" fill="#f3d38e"/><path d="M19 13.5 28.5 5M22 14l7.5-6" stroke="#f3d38e" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13c-1.4-1.6 1.4-2.6 0-4.4M15 13c-1.4-1.6 1.4-2.6 0-4.4" stroke="#f3d38e" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/></svg>
     <span><b data-i18n="title"></b><small data-i18n="heroPlace"></small></span>
   </button>
   <nav class="tabs" aria-label="Chính">
@@ -293,19 +298,46 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
   <section class="hero">
     <svg class="art" viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b4f57"/><stop offset=".55" stop-color="#2f7f86"/><stop offset="1" stop-color="#e9b86a"/></linearGradient>
-        <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d6670"/><stop offset="1" stop-color="#0d363b"/></linearGradient>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1420"/><stop offset=".55" stop-color="#7a2a2a"/><stop offset="1" stop-color="#e9a55a"/></linearGradient>
+        <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
       </defs>
       <rect width="1200" height="520" fill="url(#sky)"/>
-      <circle cx="930" cy="250" r="70" fill="#f6d9a0" opacity=".8"/>
-      <path d="M0 300 C160 230 300 250 430 210 C560 170 650 230 760 200 C880 168 1000 210 1200 170 V520 H0z" fill="#245a4c"/>
-      <path d="M0 350 C200 300 340 330 520 290 C700 250 820 310 1000 280 C1100 264 1160 280 1200 270 V520 H0z" fill="#1a4639"/>
-      <rect y="380" width="1200" height="140" fill="url(#sea)"/>
-      <g fill="#0c2a2c" opacity=".9">
-        <path d="M300 300 l8 -64 h6 l8 64z"/><circle cx="311" cy="228" r="9"/>
-        <path d="M282 300 h58 v8 h-58z"/>
+      <!-- dãy nhà phố người Hoa -->
+      <g fill="#1d0f14">
+        <path d="M0 260h120v-30h20v30h90v260H0z"/>
+        <path d="M230 230h70l20-24 20 24h70v290H230z"/>
+        <path d="M410 270h110v-40h30v40h80v250H410z"/>
+        <path d="M630 220h60l26-30 26 30h60v300H630z"/>
+        <path d="M802 255h120v-25h24v25h90v265H802z"/>
+        <path d="M1036 235h70l22-26 22 26h50v290h-164z"/>
       </g>
-      <g stroke="#f6d9a0" stroke-width="2" opacity=".25"><path d="M0 410 H1200"/><path d="M60 440 H520"/><path d="M700 455 H1150"/></g>
+      <!-- cửa sổ sáng đèn -->
+      <g fill="#f3c06a" opacity=".55">
+        <rect x="30" y="300" width="26" height="34" rx="3"/><rect x="80" y="300" width="26" height="34" rx="3"/><rect x="160" y="300" width="26" height="34" rx="3"/>
+        <rect x="260" y="280" width="26" height="34" rx="3"/><rect x="350" y="280" width="26" height="34" rx="3"/>
+        <rect x="440" y="310" width="26" height="34" rx="3"/><rect x="560" y="310" width="26" height="34" rx="3"/>
+        <rect x="660" y="270" width="26" height="34" rx="3"/><rect x="760" y="270" width="26" height="34" rx="3"/>
+        <rect x="840" y="300" width="26" height="34" rx="3"/><rect x="960" y="300" width="26" height="34" rx="3"/><rect x="1070" y="285" width="26" height="34" rx="3"/>
+      </g>
+      <!-- dây đèn lồng -->
+      <path d="M0 150 Q300 210 600 160 T1200 150" fill="none" stroke="#3a1a1a" stroke-width="2"/>
+      <g fill="#d43a2f">
+        <ellipse cx="120" cy="178" rx="16" ry="20"/><ellipse cx="300" cy="186" rx="16" ry="20"/><ellipse cx="480" cy="176" rx="16" ry="20"/>
+        <ellipse cx="720" cy="170" rx="16" ry="20"/><ellipse cx="900" cy="176" rx="16" ry="20"/><ellipse cx="1080" cy="160" rx="16" ry="20"/>
+      </g>
+      <g fill="url(#glow)">
+        <circle cx="120" cy="178" r="48"/><circle cx="300" cy="186" r="48"/><circle cx="480" cy="176" r="48"/>
+        <circle cx="720" cy="170" r="48"/><circle cx="900" cy="176" r="48"/><circle cx="1080" cy="160" r="48"/>
+      </g>
+      <!-- mặt đường và tô mì bốc khói -->
+      <rect y="440" width="1200" height="80" fill="#140a0d"/>
+      <g transform="translate(930 330)">
+        <path d="M-40 -150c-14-18 14-28 0-48M0 -150c-14-18 14-28 0-48M40 -150c-14-18 14-28 0-48" fill="none" stroke="#ffe9c4" stroke-width="5" stroke-linecap="round" opacity=".35"/>
+        <path d="M-120 -120h240a120 100 0 0 1-240 0z" fill="#f3d38e" opacity=".92"/>
+        <path d="M-40 -10h80v12h-80z" fill="#f3d38e" opacity=".92"/>
+        <path d="M30 -140 150 -250M55 -136 168 -232" stroke="#f3d38e" stroke-width="8" stroke-linecap="round" opacity=".92"/>
+        <path d="M-120 -120h240" stroke="#8f1d22" stroke-width="6"/>
+      </g>
     </svg>
     <div id="heroPhoto" class="photo"></div>
     <div class="in container">
@@ -331,6 +363,12 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
   </div>
 
   <div class="container">
+    <div class="sechead"><h2 data-i18n="howTitle"></h2></div>
+    <ol class="how">
+      <li><span class="n">1</span><b data-i18n="how1t"></b><span class="muted small" data-i18n="how1"></span></li>
+      <li><span class="n">2</span><b data-i18n="how2t"></b><span class="muted small" data-i18n="how2"></span></li>
+      <li><span class="n">3</span><b data-i18n="how3t"></b><span class="muted small" data-i18n="how3"></span></li>
+    </ol>
     <div class="sechead"><h2 data-i18n="poisTitle"></h2><span id="poiCount" class="muted small"></span></div>
     <div id="homeChips" class="chips"></div>
     <div id="poiGrid" class="grid"></div>
@@ -491,24 +529,26 @@ const TTS_LANG = { vi: 'vi-VN', en: 'en-US', 'zh-CN': 'zh-CN', ja: 'ja-JP', ko: 
 const DEFAULT_LANGS = [{ code: 'vi', nativeName: 'Tiếng Việt' }, { code: 'en', nativeName: 'English' }];
 // Trước khi có vé chưa tải được dataset, nên danh sách ngôn ngữ thuyết minh để sẵn ở đây
 const ALL_LANGS = [{ code: 'vi', nativeName: 'Tiếng Việt' }, { code: 'en', nativeName: 'English' }, { code: 'zh-CN', nativeName: '中文' }, { code: 'ja', nativeName: '日本語' }, { code: 'ko', nativeName: '한국어' }, { code: 'fr', nativeName: 'Français' }];
-const CENTER = [16.1, 108.277];
+// Tâm bản đồ: khu Chợ Lớn, Quận 5 (TP.HCM)
+const CENTER = [10.7545, 106.6625];
 
 const T = {
   vi: {
-    title: 'Hành trình cùng SGU', tabHome: 'Trang chủ', tabMap: 'Bản đồ', tabTicket: 'Vé',
-    welcome: 'Chào mừng quý khách', heroTitle: 'Chùa Linh Ứng Sơn Trà', heroPlace: 'Bán đảo Sơn Trà · Đà Nẵng',
-    heroText: 'Đi dạo quanh chùa, khi tới gần mỗi điểm tham quan ứng dụng sẽ tự kể câu chuyện của nơi đó bằng ngôn ngữ của quý khách.',
-    langLabel: 'Chọn ngôn ngữ thuyết minh', explore: 'Khám phá bản đồ', buyTicket: 'Mua vé nghe thuyết minh',
-    poisTitle: 'Điểm tham quan', poiCount: '{n} điểm', all: 'Tất cả', searchPh: 'Tìm điểm tham quan...',
+    title: 'Ẩm thực Q5 cùng SGU', tabHome: 'Trang chủ', tabMap: 'Bản đồ', tabTicket: 'Vé',
+    welcome: 'Chào mừng quý khách', heroTitle: 'Thuyết minh quán ăn Quận 5', heroPlace: 'Chợ Lớn · Quận 5 · TP.HCM',
+    heroText: 'Dạo phố Chợ Lớn, khi tới gần mỗi quán ăn, ứng dụng sẽ tự kể về món đặc trưng, lịch sử quán và cách thưởng thức bằng ngôn ngữ của quý khách.',
+    howTitle: 'Cách hoạt động', how1t: 'Chọn ngôn ngữ', how1: 'Tiếng Việt, English, 中文, 日本語, 한국어 hoặc Français.', how2t: 'Dạo phố, bật định vị', how2: 'Đi bộ quanh các con đường ẩm thực Quận 5 như Hà Tôn Quyền, Nguyễn Trãi, Châu Văn Liêm.', how3t: 'Nghe kể chuyện tự động', how3: 'Tới gần quán nào, thuyết minh về quán đó tự phát: món ngon, giá tham khảo, mẹo gọi món.',
+    langLabel: 'Chọn ngôn ngữ thuyết minh', explore: 'Khám phá bản đồ ẩm thực', buyTicket: 'Mua vé nghe thuyết minh',
+    poisTitle: 'Quán ăn & món ngon', poiCount: '{n} quán', all: 'Tất cả', searchPh: 'Tìm quán hoặc món ăn...',
     stNoneTitle: 'Quý khách đang xem bản giới thiệu', stNoneText: 'Nghe thử phần giới thiệu ngắn miễn phí. Mua vé để nghe thuyết minh đầy đủ, tự phát khi tới gần.',
     stOkTitle: 'Vé còn hiệu lực', stOkText: 'Thuyết minh đầy đủ đã mở. Hạn dùng đến {time}.', stBuy: 'Mua vé', stMap: 'Mở bản đồ',
-    useGps: 'Bật định vị', viewOnMap: 'Xem trên bản đồ', lockedTitle: 'Phần thuyết minh đầy đủ cần vé tham quan',
-    lockedText: 'Quý khách đang nghe phần giới thiệu ngắn. Mua vé để nghe toàn bộ câu chuyện và bật tự phát khi tới gần.',
-    ticketExpired: 'Vé đã hết hạn. Quý khách vui lòng mua vé mới để tiếp tục nghe thuyết minh.', unlocked: 'Đã mở khóa thuyết minh. Chúc quý khách tham quan vui vẻ!',
+    useGps: 'Bật định vị', viewOnMap: 'Xem trên bản đồ', lockedTitle: 'Phần thuyết minh đầy đủ cần vé',
+    lockedText: 'Quý khách đang nghe phần giới thiệu ngắn. Mua vé để nghe toàn bộ câu chuyện về quán và bật tự phát khi tới gần.',
+    ticketExpired: 'Vé đã hết hạn. Quý khách vui lòng mua vé mới để tiếp tục nghe thuyết minh.', unlocked: 'Đã mở khóa thuyết minh. Chúc quý khách ăn ngon!',
     nearLocked: 'gần quý khách. Mua vé để nghe thuyết minh.', ticketActive: 'Vé còn hiệu lực đến {time}', ticketPillNone: 'Mua vé',
     payOnlineSub: 'Thẻ ATM, Visa, ví điện tử qua cổng thanh toán', payMomoSub: 'Quét mã, nhân viên xác nhận', payCashSub: 'Đưa mã đơn cho nhân viên tại quầy',
-    payHeading: 'Mua vé để bắt đầu', payIntro: 'Thanh toán vé để mở bản đồ và nghe thuyết minh đa ngôn ngữ. Khi quý khách đi tới gần mỗi điểm tham quan, ứng dụng sẽ tự kể câu chuyện của nơi đó.',
-    ticketTitle: 'Vé tham quan', validFor: 'Có hiệu lực {h} giờ kể từ khi mở khóa',
+    payHeading: 'Mua vé để bắt đầu', payIntro: 'Thanh toán vé để mở bản đồ ẩm thực và nghe thuyết minh đa ngôn ngữ. Khi quý khách đi tới gần mỗi quán ăn, ứng dụng sẽ tự kể câu chuyện của quán.',
+    ticketTitle: 'Vé thuyết minh ẩm thực', validFor: 'Có hiệu lực {h} giờ kể từ khi mở khóa',
     payOnline: 'Thanh toán online', payCash: 'Tiền mặt tại quầy',
     mockNote: 'Chế độ thử nghiệm: thanh toán online là môi trường sandbox.',
     waitTitle: 'Đang xác nhận thanh toán', waitText: 'Vui lòng đợi trong giây lát...',
@@ -521,34 +561,36 @@ const T = {
     errPayment: 'Không tạo được đơn thanh toán.', errCode: 'Mã thanh toán không hợp lệ hoặc đã hết hạn.',
     payFailTitle: 'Thanh toán không thành công', payFailText: 'Quý khách chưa bị trừ tiền. Hãy thử lại.', payAgain: 'Thanh toán lại',
     networkError: 'Không kết nối được máy chủ.', mapLoading: 'Đang tải dữ liệu...',
-    noDataset: 'Chưa có dữ liệu thuyết minh. Quản trị viên cần publish dataset.', noPoi: 'Chưa có điểm tham quan nào.', noMatch: 'Không tìm thấy điểm phù hợp.',
+    noDataset: 'Chưa có dữ liệu thuyết minh. Quản trị viên cần publish dataset.', noPoi: 'Chưa có quán ăn nào.', noMatch: 'Không tìm thấy quán hoặc món phù hợp.',
     listen: 'Nghe thuyết minh', listenShort: 'Nghe giới thiệu', stop: 'Dừng', directions: 'Chỉ đường', nearYou: 'Quý khách đang gần',
-    gpsDenied: 'Chưa cho phép định vị. Bản đồ vẫn dùng được, hãy chạm vào điểm để xem.', gpsWeak: 'Tín hiệu GPS yếu.',
-    farAway: 'Quý khách đang cách chùa khoảng {km} km.', noVoice: 'Thiết bị chưa có giọng đọc cho ngôn ngữ này, hãy đọc văn bản.',
-    autoOn: 'Tự động phát: bật', autoOff: 'Tự động phát: tắt', autoOnSpeech: 'Đã bật tự động thuyết minh', autoNeedTicket: 'Tự động phát cần vé tham quan.',
+    gpsDenied: 'Chưa cho phép định vị. Bản đồ vẫn dùng được, hãy chạm vào quán để xem.', gpsWeak: 'Tín hiệu GPS yếu.',
+    farAway: 'Quý khách đang cách khu ẩm thực Quận 5 khoảng {km} km.', noVoice: 'Thiết bị chưa có giọng đọc cho ngôn ngữ này, hãy đọc văn bản.',
+    autoOn: 'Tự động phát: bật', autoOff: 'Tự động phát: tắt', autoOnSpeech: 'Đã bật tự động thuyết minh', autoNeedTicket: 'Tự động phát cần vé thuyết minh.',
     fallbackNote: 'Chưa có bản dịch, hiển thị bằng {lang}.', distAway: 'Cách quý khách {m}', playing: 'Đang phát',
     simOn: 'Giả lập vị trí: bật. Chạm lên bản đồ để di chuyển.', simOff: 'Giả lập vị trí: tắt', locate: 'Vị trí của tôi',
     payMomo: 'Thanh toán MoMo', momoTitle: 'Thanh toán bằng MoMo',
     momoStep1: 'Mở MoMo, quét mã QR bên dưới và chuyển đúng số tiền.', momoNote: 'Ghi nội dung chuyển tiền là:',
     momoWaiting: 'Đang chờ nhân viên xác nhận đã nhận tiền...', momoHint: 'Sau khi chuyển, giữ nguyên màn hình này. Ứng dụng sẽ tự mở khi nhân viên xác nhận.',
     momoExpired: 'Đơn đã hết hạn hoặc không hợp lệ.', audioPre: 'Giọng đọc thu sẵn', audioLocal: 'Giọng đọc của thiết bị', audioPreview: 'Giới thiệu ngắn',
-    min: '{n} phút', cat_STATUE: 'Tượng', cat_HALL: 'Công trình', cat_FACILITY: 'Tiện ích', cat_SHOP: 'Quán / cửa hàng', cat_OTHER: 'Điểm tham quan'
+    min: '{n} phút', cat_NOODLE: 'Mì · hủ tiếu · bún', cat_RICE: 'Cơm · cháo', cat_DIMSUM: 'Dimsum · điểm tâm', cat_DESSERT: 'Chè · tráng miệng',
+    cat_DRINK: 'Trà · đồ uống', cat_SNACK: 'Ăn vặt', cat_SHOP: 'Quán ăn', cat_FACILITY: 'Tiện ích', cat_STATUE: 'Di tích', cat_HALL: 'Công trình', cat_OTHER: 'Địa điểm'
   },
   en: {
-    title: 'Linh Ung Pagoda Guide', tabHome: 'Home', tabMap: 'Map', tabTicket: 'Ticket',
-    welcome: 'Welcome', heroTitle: 'Linh Ung Pagoda, Son Tra', heroPlace: 'Son Tra Peninsula · Da Nang',
-    heroText: 'Walk around the pagoda. As you approach each point of interest, the app tells its story in your language.',
-    langLabel: 'Choose your narration language', explore: 'Explore the map', buyTicket: 'Get a ticket to listen',
-    poisTitle: 'Points of interest', poiCount: '{n} places', all: 'All', searchPh: 'Search places...',
+    title: 'District 5 Food Guide', tabHome: 'Home', tabMap: 'Map', tabTicket: 'Ticket',
+    welcome: 'Welcome', heroTitle: 'District 5 Food Narration', heroPlace: 'Cho Lon · District 5 · Ho Chi Minh City',
+    heroText: 'Stroll through Cho Lon. As you approach each eatery, the app tells you about its signature dishes, its history and how to enjoy them, in your language.',
+    howTitle: 'How it works', how1t: 'Pick a language', how1: 'Vietnamese, English, Chinese, Japanese, Korean or French.', how2t: 'Walk with location on', how2: 'Explore District 5 food streets such as Ha Ton Quyen, Nguyen Trai and Chau Van Liem.', how3t: 'Hear stories automatically', how3: 'Get close to an eatery and its story plays: signature dishes, price range and ordering tips.',
+    langLabel: 'Choose your narration language', explore: 'Explore the food map', buyTicket: 'Get a ticket to listen',
+    poisTitle: 'Eateries & dishes', poiCount: '{n} eateries', all: 'All', searchPh: 'Search eateries or dishes...',
     stNoneTitle: 'You are viewing the preview', stNoneText: 'Listen to the short introductions for free. Buy a ticket for the full narration, played automatically as you arrive.',
     stOkTitle: 'Ticket active', stOkText: 'Full narration unlocked. Valid until {time}.', stBuy: 'Buy ticket', stMap: 'Open map',
     useGps: 'Use my location', viewOnMap: 'Show on map', lockedTitle: 'The full narration needs a ticket',
     lockedText: 'You are hearing the short introduction. Buy a ticket for the whole story and automatic playback on arrival.',
-    ticketExpired: 'Your ticket has expired. Please buy a new one to keep listening.', unlocked: 'Narration unlocked. Enjoy your visit!',
+    ticketExpired: 'Your ticket has expired. Please buy a new one to keep listening.', unlocked: 'Narration unlocked. Enjoy your meal!',
     nearLocked: 'is near you. Buy a ticket to listen.', ticketActive: 'Ticket valid until {time}', ticketPillNone: 'Buy ticket',
     payOnlineSub: 'Bank card, Visa or e-wallet via payment gateway', payMomoSub: 'Scan the QR, staff confirm', payCashSub: 'Show the order code at the counter',
-    payHeading: 'Get a ticket to start', payIntro: 'Pay for a ticket to open the map and multilingual narration. As you approach each point of interest, the app tells its story.',
-    ticketTitle: 'Visitor ticket', validFor: 'Valid for {h} hours after unlocking',
+    payHeading: 'Get a ticket to start', payIntro: 'Pay for a ticket to open the food map and multilingual narration. As you approach each eatery, the app tells its story.',
+    ticketTitle: 'Food narration ticket', validFor: 'Valid for {h} hours after unlocking',
     payOnline: 'Pay online', payCash: 'Cash at the counter',
     mockNote: 'Test mode: online payment uses a sandbox.',
     waitTitle: 'Confirming payment', waitText: 'Please wait a moment...',
@@ -561,10 +603,10 @@ const T = {
     errPayment: 'Could not create the payment order.', errCode: 'The payment code is invalid or expired.',
     payFailTitle: 'Payment failed', payFailText: 'You have not been charged. Please try again.', payAgain: 'Pay again',
     networkError: 'Cannot reach the server.', mapLoading: 'Loading data...',
-    noDataset: 'No guide data yet. An admin must publish the dataset.', noPoi: 'No points of interest yet.', noMatch: 'No matching places.',
+    noDataset: 'No guide data yet. An admin must publish the dataset.', noPoi: 'No eateries yet.', noMatch: 'No matching eateries or dishes.',
     listen: 'Listen', listenShort: 'Listen to intro', stop: 'Stop', directions: 'Directions', nearYou: 'You are near',
     gpsDenied: 'Location permission denied. The map still works, tap a point to read about it.', gpsWeak: 'Weak GPS signal.',
-    farAway: 'You are about {km} km from the pagoda.', noVoice: 'No voice for this language on your device, please read the text.',
+    farAway: 'You are about {km} km from the District 5 food area.', noVoice: 'No voice for this language on your device, please read the text.',
     autoOn: 'Auto-play: on', autoOff: 'Auto-play: off', autoOnSpeech: 'Automatic narration enabled', autoNeedTicket: 'Auto-play needs a ticket.',
     fallbackNote: 'No translation yet, showing {lang}.', distAway: '{m} away', playing: 'Playing',
     simOn: 'Location simulation on. Tap the map to move.', simOff: 'Location simulation off', locate: 'My location',
@@ -572,7 +614,8 @@ const T = {
     momoStep1: 'Open MoMo, scan the QR code below and transfer the exact amount.', momoNote: 'Use this as the transfer message:',
     momoWaiting: 'Waiting for staff to confirm the payment...', momoHint: 'After transferring, keep this screen open. The app opens automatically once staff confirm.',
     momoExpired: 'The order expired or is invalid.', audioPre: 'Recorded narration', audioLocal: 'Device voice', audioPreview: 'Short introduction',
-    min: '{n} min', cat_STATUE: 'Statue', cat_HALL: 'Building', cat_FACILITY: 'Facility', cat_SHOP: 'Shop / café', cat_OTHER: 'Place'
+    min: '{n} min', cat_NOODLE: 'Noodles', cat_RICE: 'Rice & congee', cat_DIMSUM: 'Dim sum', cat_DESSERT: 'Desserts',
+    cat_DRINK: 'Tea & drinks', cat_SNACK: 'Snacks', cat_SHOP: 'Eatery', cat_FACILITY: 'Facility', cat_STATUE: 'Landmark', cat_HALL: 'Building', cat_OTHER: 'Place'
   }
 };
 
@@ -871,6 +914,12 @@ function catOf(poi) {
   return { code, color: (c && c.color) || '#8f1d22', name: t('cat_' + code) !== 'cat_' + code ? t('cat_' + code) : code };
 }
 const ICON_PATH = {
+  NOODLE: 'M28 44h64c0 18-14 30-32 30S28 62 28 44zM70 40 94 14l4 3-20 23zM40 36c-4-5 4-8 0-14M52 36c-4-5 4-8 0-14',
+  RICE: 'M26 46h68c0 16-15 28-34 28S26 62 26 46zM36 44c2-12 12-18 24-18s22 6 24 18z',
+  DIMSUM: 'M24 50h72v8H24zM28 60h64v14H28zM40 48c0-10 8-16 20-16s20 6 20 16zM56 30l4-6 4 6',
+  DESSERT: 'M38 30h44l-6 44H44zM34 24h52v6H34zM62 10l4 14h-4z',
+  DRINK: 'M30 40h50v20c0 10-8 16-25 16S30 70 30 60zM80 46h8a8 8 0 0 1 0 16h-8v-5h8a3 3 0 0 0 0-6h-8zM44 34c-4-5 4-8 0-14M58 34c-4-5 4-8 0-14',
+  SNACK: 'M60 26c-20 0-32 14-32 30 0 10 6 16 32 16s32-6 32-16c0-16-12-30-32-30zm0 6c4 6 4 10 0 14-4-4-4-8 0-14z',
   STATUE: 'M60 18c6 0 10 5 10 11 0 4-2 7-5 9l9 30H46l9-30c-3-2-5-5-5-9 0-6 4-11 10-11zM38 72h44v6H38z',
   HALL: 'M18 46 60 22l42 24H90v4H30v-4zM34 54h6v24h-6zM57 54h6v24h-6zM80 54h6v24h-6zM26 80h68v6H26z',
   FACILITY: 'M60 20a28 28 0 1 0 0 56 28 28 0 0 0 0-56zm-4 14h8v8h-8zm0 14h8v20h-8z',

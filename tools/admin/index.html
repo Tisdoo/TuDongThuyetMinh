@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quản trị POI - Chùa Linh Ứng</title>
+<title>Quản trị POI - Ẩm thực Quận 5</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -74,7 +74,7 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
 </style>
 </head>
 <body>
-<header class="topbar" style="--maxw:1080px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M5 15.5 17 8l12 7.5h-3.2l-8.8-5.4-8.8 5.4zM8.5 16.5h17v1.8h-17zM10 19.5h2v7h-2zM16 19.5h2v7h-2zM22 19.5h2v7h-2zM7.5 27h19v1.8h-19z" fill="#f3d38e"/></svg><div><b>Quản trị POI</b><small>Chùa Linh Ứng · Biên tập nội dung</small></div><span class="sp"></span><a href="/">Web App du khách</a><a href="/owner.html">Trang chủ quán</a></div></header>
+<header class="topbar" style="--maxw:1080px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M6 17h22a11 9 0 0 1-22 0z" fill="#f3d38e"/><path d="M12 28h10v1.8H12z" fill="#f3d38e"/><path d="M19 13.5 28.5 5M22 14l7.5-6" stroke="#f3d38e" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13c-1.4-1.6 1.4-2.6 0-4.4M15 13c-1.4-1.6 1.4-2.6 0-4.4" stroke="#f3d38e" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/></svg><div><b>Quản trị POI</b><small>Ẩm thực Quận 5 · Nhập liệu quán ăn</small></div><span class="sp"></span><a href="/">Web App du khách</a><a href="/owner.html">Trang chủ quán</a></div></header>
 <main class="wrap" style="--maxw:1080px">
 
 <section id="loginBox" class="card">
@@ -89,7 +89,7 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
   <p>Đã đăng nhập: <b id="who"></b> <button id="btnLogout">Đăng xuất</button></p>
   <nav class="tabs">
     <button data-tab="list" class="on">Danh sách POI</button>
-    <button data-tab="edit">Thêm / Sửa POI</button>
+    <button data-tab="edit">Thêm / Sửa quán ăn</button>
     <button data-tab="csv">Nhập từ CSV</button>
     <button data-tab="owners">Duyệt chủ quán</button>
     <button data-tab="ownerpois">Duyệt POI chủ quán</button>
@@ -103,11 +103,19 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
   </div>
 
   <div id="tab-edit" class="card hidden">
-    <h2 id="editTitle">Thêm POI mới</h2>
+    <h2 id="editTitle">Thêm quán ăn (POI) mới</h2>
+    <p class="muted">Mỗi POI là một quán ăn. Phần mô tả đầy đủ chính là lời thuyết minh: nên kể món đặc trưng, quán có từ bao giờ, giá tham khảo, giờ mở cửa và mẹo gọi món.</p>
     <div class="grid">
-      <div><label>Mã POI (chữ, số, _ -)</label><input id="f_code" placeholder="VD: TUONG_PHAT_BA"></div>
+      <div><label>Mã POI (chữ, số, _ -)</label><input id="f_code" placeholder="VD: HU_TIEU_HA_TON_QUYEN"></div>
       <div><label>Loại</label>
-        <select id="f_cat"><option value="1">Tượng</option><option value="2">Chánh điện / công trình</option><option value="3">Tiện ích</option><option value="4">Quán / cửa hàng (chủ quán)</option></select></div>
+        <select id="f_cat">
+          <optgroup label="Ẩm thực Quận 5">
+            <option value="11">Mì · hủ tiếu · bún</option><option value="12">Cơm · cháo</option><option value="13">Dimsum · điểm tâm</option>
+            <option value="14">Chè · tráng miệng</option><option value="15">Trà · đồ uống</option><option value="16">Ăn vặt</option>
+            <option value="4">Quán ăn (chung / chủ quán gửi)</option><option value="3">Tiện ích (bãi xe, WC...)</option>
+          </optgroup>
+          <optgroup label="Loại cũ (giữ cho dữ liệu cũ)"><option value="1">Di tích / tượng</option><option value="2">Công trình</option></optgroup>
+        </select></div>
       <div><label>Bán kính kích hoạt (m)</label><input id="f_radius" type="number" value="25" min="5" max="200"></div>
       <div><label>Ưu tiên (số lớn = ưu tiên)</label><input id="f_priority" type="number" value="0"></div>
       <div><label>Thứ tự hiển thị</label><input id="f_order" type="number" value="0"></div>
@@ -119,24 +127,24 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
       <div><label>Kinh độ (lng)</label><input id="f_lng" type="number" step="any"></div>
       <div style="align-self:end"><button id="btnGps">Dùng vị trí GPS của tôi</button></div>
     </div>
-    <div id="gpsMsg" class="muted">Chạm lên bản đồ để chọn vị trí, hoặc đứng tại điểm đó và bấm nút GPS (cần mở trang bằng HTTPS, ví dụ qua ngrok).</div>
+    <div id="gpsMsg" class="muted">Chạm lên bản đồ để chọn vị trí quán, hoặc đứng trước cửa quán và bấm nút GPS (cần mở trang bằng HTTPS, ví dụ qua ngrok).</div>
     <div id="pickMap"></div>
     <h2>Nội dung tiếng Việt (bắt buộc)</h2>
-    <label>Tên</label><input id="vi_name">
-    <label>Mô tả ngắn</label><input id="vi_short">
-    <label>Mô tả đầy đủ (nên 40 đến 80 từ, câu ngắn để giọng đọc nghe rõ)</label><textarea id="vi_desc"></textarea>
+    <label>Tên quán</label><input id="vi_name" placeholder="VD: Hủ tiếu Hà Tôn Quyền">
+    <label>Mô tả ngắn (món chính, giá tham khảo)</label><input id="vi_short" placeholder="VD: Hủ tiếu Nam Vang, sủi cảo · 45.000 - 70.000đ">
+    <label>Lời thuyết minh (nên 40 đến 80 từ, câu ngắn để giọng đọc nghe rõ)</label><textarea id="vi_desc" placeholder="VD: Quán mở từ những năm 1980, nổi tiếng với nước dùng hầm xương ngọt thanh. Nên gọi hủ tiếu khô kèm chén súp riêng. Quán đông nhất từ 17 đến 19 giờ."></textarea>
     <h2>Bản dịch tiếng Anh (nên có)</h2>
-    <label>Name</label><input id="en_name">
+    <label>Eatery name</label><input id="en_name">
     <label>Short description</label><input id="en_short">
     <label>Description</label><textarea id="en_desc"></textarea>
-    <label>Ảnh đại diện (tùy chọn): <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...</label><input id="f_thumb" placeholder="/img/tuong-phat-ba.jpg">
-    <p><button id="btnSave" class="primary">Lưu POI</button> <button id="btnNew">Làm mới form</button></p>
+    <label>Ảnh đại diện (tùy chọn): <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...</label><input id="f_thumb" placeholder="/img/hu-tieu-ha-ton-quyen.jpg">
+    <p><button id="btnSave" class="primary">Lưu quán ăn</button> <button id="btnNew">Làm mới form</button></p>
     <div id="saveMsg"></div>
   </div>
 
   <div id="tab-csv" class="card hidden">
     <h2>Nhập nhiều POI từ file CSV</h2>
-    <p class="muted">Cột: code, name_vi, short_vi, desc_vi, name_en, short_en, desc_en, lat, lng, radius, category (1 Tượng, 2 Chánh điện, 3 Tiện ích, 4 Quán), priority, order, status, thumbnail (đường dẫn ảnh, ví dụ <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...). File lưu UTF-8; dấu phân cách dấu phẩy hoặc chấm phẩy đều được. POI đã có mã trùng sẽ được cập nhật.</p>
+    <p class="muted">Cột: code, name_vi, short_vi, desc_vi, name_en, short_en, desc_en, lat, lng, radius, category (11 Mì/hủ tiếu/bún, 12 Cơm/cháo, 13 Dimsum, 14 Chè/tráng miệng, 15 Trà/đồ uống, 16 Ăn vặt, 4 Quán ăn chung, 3 Tiện ích), priority, order, status, thumbnail (đường dẫn ảnh, ví dụ <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...). File lưu UTF-8; dấu phân cách dấu phẩy hoặc chấm phẩy đều được. POI đã có mã trùng sẽ được cập nhật.</p>
     <button id="btnTemplate">Tải file CSV mẫu</button>
     <input id="csvFile" type="file" accept=".csv,text/csv">
     <div id="csvPreview"></div>
@@ -265,7 +273,7 @@ async function archivePoi(p) {
 // ---------- Form + bản đồ ----------
 function initMap() {
   if (map) return;
-  map = L.map('pickMap').setView([16.1, 108.277], 16);
+  map = L.map('pickMap').setView([10.7545, 106.6625], 16); // khu Chợ Lớn, Quận 5
   const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
   const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
   osm.addTo(map);
@@ -308,7 +316,7 @@ function useMyGps() {
 function resetForm() {
   editingId = null; $('editTitle').textContent = 'Thêm POI mới';
   ['f_code', 'f_lat', 'f_lng', 'f_thumb', 'vi_name', 'vi_short', 'vi_desc', 'en_name', 'en_short', 'en_desc'].forEach((id) => { $(id).value = ''; });
-  $('f_code').disabled = false; $('f_cat').value = '1'; $('f_radius').value = '25'; $('f_priority').value = '0'; $('f_order').value = '0'; $('f_status').value = 'DRAFT';
+  $('f_code').disabled = false; $('f_cat').value = '11'; $('f_radius').value = '25'; $('f_priority').value = '0'; $('f_order').value = '0'; $('f_status').value = 'DRAFT';
   if (marker) { marker.remove(); marker = null; } if (circle) { circle.remove(); circle = null; }
   say($('saveMsg'), '', '');
 }
@@ -319,7 +327,7 @@ async function editPoi(id) {
   const p = r.data;
   $('editTitle').textContent = 'Sửa POI ' + p.code;
   $('f_code').value = p.code; $('f_code').disabled = true;
-  $('f_cat').value = String(p.category_id || 1); $('f_radius').value = p.trigger_radius_m; $('f_priority').value = p.priority;
+  $('f_cat').value = String(p.category_id || 4); $('f_radius').value = p.trigger_radius_m; $('f_priority').value = p.priority;
   $('f_order').value = p.display_order; $('f_status').value = p.status === 'ARCHIVED' ? 'DRAFT' : p.status; $('f_thumb').value = p.thumbnail_url || '';
   const tr = (l) => (p.translations || []).find((x) => x.lang_code === l) || {};
   $('vi_name').value = tr('vi').name || ''; $('vi_short').value = tr('vi').short_description || ''; $('vi_desc').value = tr('vi').description || '';
@@ -447,9 +455,9 @@ function downloadTemplate() {
   const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
   const rows = [
     ['code', 'name_vi', 'short_vi', 'desc_vi', 'name_en', 'short_en', 'desc_en', 'lat', 'lng', 'radius', 'category', 'priority', 'order', 'status', 'thumbnail'],
-    ['TUONG_PHAT_BA', 'Tượng Phật Bà Quan Âm', 'Tượng Phật Bà cao nhất Việt Nam', 'Tượng Phật Bà Quan Âm là biểu tượng của chùa. Tượng nhìn ra biển, cầu mong bình an cho ngư dân. (Nội dung mẫu, hãy thay bằng nội dung thật.)', 'Lady Buddha statue', 'The tallest Lady Buddha statue in Vietnam', 'The Lady Buddha is the symbol of the pagoda. It faces the sea and blesses the fishermen. (Sample text, replace with real content.)', '16.1000', '108.2780', '30', '1', '10', '1', 'PUBLISHED', '/img/tuong-phat-ba.jpg'],
-    ['CHANH_DIEN', 'Chánh điện', 'Nơi thờ chính của chùa', 'Chánh điện là nơi thờ Đức Phật. Du khách giữ yên lặng và ăn mặc lịch sự. (Nội dung mẫu.)', 'Main hall', 'The main worship hall', 'The main hall enshrines the Buddha. Please stay quiet and dress modestly. (Sample text.)', '16.0996', '108.2772', '25', '2', '5', '2', 'PUBLISHED', '/img/chanh-dien.jpg'],
-    ['CONG_TAM_QUAN', 'Cổng tam quan', 'Cổng vào chùa', 'Cổng tam quan là lối vào chùa. (Nội dung mẫu.)', 'Triple gate', 'The pagoda entrance', 'The triple gate is the entrance to the pagoda. (Sample text.)', '16.0990', '108.2768', '25', '3', '0', '3', 'PUBLISHED', ''],
+    ['HU_TIEU_HTQ', 'Hủ tiếu Hà Tôn Quyền', 'Hủ tiếu, sủi cảo · khoảng 40.000 - 70.000đ', 'Đường Hà Tôn Quyền nổi tiếng với các quán hủ tiếu và sủi cảo người Hoa. Nên thử hủ tiếu khô ăn kèm chén súp riêng. (Nội dung mẫu, hãy thay bằng thông tin thật của quán.)', 'Ha Ton Quyen noodle shop', 'Noodles and wontons · about 40,000 - 70,000 VND', 'Ha Ton Quyen street is famous for Chinese-style noodle and wonton shops. Try the dry noodles with a separate bowl of broth. (Sample text, replace with real details.)', '10.7560', '106.6560', '25', '11', '10', '1', 'PUBLISHED', '/img/hu-tieu.jpg'],
+    ['DIMSUM_Q5', 'Quán dimsum Chợ Lớn', 'Há cảo, xíu mại, bánh bao · buổi sáng', 'Dimsum là bữa điểm tâm quen thuộc của người Hoa ở Chợ Lớn, thường ăn kèm trà nóng. Nên đến sớm vì nhiều món hết trước trưa. (Nội dung mẫu.)', 'Cho Lon dim sum house', 'Har gow, siu mai, buns · mornings', 'Dim sum is the classic breakfast of Cho Lon, usually enjoyed with hot tea. Come early, many items sell out before noon. (Sample text.)', '10.7535', '106.6635', '25', '13', '5', '2', 'PUBLISHED', '/img/dimsum.jpg'],
+    ['CHE_Q5', 'Chè người Hoa', 'Chè mè đen, sâm bổ lượng · buổi tối', 'Quận 5 có nhiều quán chè kiểu Hoa như chè mè đen, chè hột gà trà, sâm bổ lượng. Món ngọt mát, hợp để kết thúc buổi tối. (Nội dung mẫu.)', 'Chinese dessert stall', 'Black sesame soup, sam bo luong · evenings', 'District 5 has many Chinese-style dessert stalls serving black sesame soup and sam bo luong. A sweet, cooling way to end the evening. (Sample text.)', '10.7548', '106.6662', '20', '14', '0', '3', 'PUBLISHED', ''],
   ];
   const csv = '\uFEFF' + rows.map((r) => r.map(q).join(',')).join('\r\n');
   const a = document.createElement('a');

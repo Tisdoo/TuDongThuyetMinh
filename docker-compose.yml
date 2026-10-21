@@ -1,3 +1,6 @@
+# Co dinh ten project: giai nen ra thu muc ten khac van dung chung container va du lieu cu
+name: linhung-guide
+
 services:
   postgres:
     image: postgis/postgis:16-3.4
@@ -36,6 +39,10 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@12345}
       SEED_DEV_ACCOUNTS: ${SEED_DEV_ACCOUNTS:-true}
       PII_KEY: ${PII_KEY:-dev-pii-key-change-me}
+    # Giu khoa ky JWT qua cac lan build lai: khong co volume nay thi moi lan tao lai container
+    # se sinh khoa moi -> token cua khach da mua ve bi vo hieu, khach phai thanh toan lai
+    volumes:
+      - auth_keys:/app/.keys
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -120,5 +127,6 @@ services:
 
 volumes:
   pgdata:
+  auth_keys:
   poi_storage:
   audio_data:

@@ -26,7 +26,11 @@ function ownerOf(req: any) {
   return { id: uuid(id), name: String(req.header('x-user-name') ?? '').slice(0, 50) || null };
 }
 
+// Chu quan chon loai mon chinh cua quan (ma loai, khong dung id de khong phu thuoc thu tu INSERT trong CSDL)
+const OWNER_CATEGORIES = ['SHOP', 'NOODLE', 'RICE', 'DIMSUM', 'DESSERT', 'DRINK', 'SNACK'] as const;
+
 const OwnerPoi = z.object({
+  categoryCode: z.enum(OWNER_CATEGORIES).default('SHOP'),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   triggerRadiusM: z.number().int().min(10).max(60).default(25),
@@ -50,11 +54,12 @@ async function upsertVi(c: PoolClient, poiId: string, b: OwnerPoiInput) {
 }
 
 const SELECT_OWN = `
-  SELECT p.id, p.code, p.latitude, p.longitude, p.trigger_radius_m, p.thumbnail_url, p.status,
+  SELECT p.id, p.code, COALESCE(c.code, 'SHOP') AS category_code, p.latitude, p.longitude, p.trigger_radius_m, p.thumbnail_url, p.status,
          p.review_status, p.review_note, p.submitted_at, p.reviewed_at, p.created_at,
          COALESCE(t.name,'') AS name, COALESCE(t.short_description,'') AS short_description,
          COALESCE(t.description,'') AS description
     FROM pois p LEFT JOIN poi_translations t ON t.poi_id = p.id AND t.lang_code = 'vi'
+                LEFT JOIN poi_categories c ON c.id = p.category_id
    WHERE p.owner_id = $1 AND p.status <> 'ARCHIVED'`;
 
 ownerRouter.get('/poi/owner/pois', ah(async (req, res) => {
@@ -82,11 +87,11 @@ ownerRouter.post('/poi/owner/pois', ah(async (req, res) => {
       row = (await c.query(
         `INSERT INTO pois (code, category_id, latitude, longitude, location, trigger_radius_m, thumbnail_url,
                            status, owner_id, owner_name, review_status, submitted_at, created_by, updated_by)
-         VALUES ($1, (SELECT id FROM poi_categories WHERE code='SHOP'), $2, $3,
+         VALUES ($1, (SELECT id FROM poi_categories WHERE code=$8), $2, $3,
                  ST_SetSRID(ST_MakePoint($3,$2),4326)::geography, $4, $5,
                  'DRAFT', $6, $7, 'PENDING', now(), $6, $6)
          ON CONFLICT (code) DO NOTHING RETURNING id, code`,
-        [`OWN-${randomCode(6)}`, b.latitude, b.longitude, b.triggerRadiusM, b.thumbnailUrl ?? null, me.id, me.name])).rows[0];
+        [`OWN-${randomCode(6)}`, b.latitude, b.longitude, b.triggerRadiusM, b.thumbnailUrl ?? null, me.id, me.name, b.categoryCode])).rows[0];
     }
     if (!row) throw new AppError(500, 'CODE_GENERATION_FAILED');
     await upsertVi(c, row.id, b);
@@ -105,10 +110,10 @@ ownerRouter.put('/poi/owner/pois/:id', ah(async (req, res) => {
     if (!cur || cur.status === 'ARCHIVED') throw new AppError(404, 'POI_NOT_FOUND');
     await c.query(
       `UPDATE pois SET latitude=$2, longitude=$3, location=ST_SetSRID(ST_MakePoint($3,$2),4326)::geography,
-              trigger_radius_m=$4, thumbnail_url=$5, status='DRAFT', review_status='PENDING', review_note=NULL,
+              trigger_radius_m=$4, thumbnail_url=$5, category_id=(SELECT id FROM poi_categories WHERE code=$7), status='DRAFT', review_status='PENDING', review_note=NULL,
               reviewed_by=NULL, reviewed_at=NULL, submitted_at=now(), updated_by=$6, updated_at=now()
         WHERE id=$1`,
-      [id, b.latitude, b.longitude, b.triggerRadiusM, b.thumbnailUrl ?? null, me.id]);
+      [id, b.latitude, b.longitude, b.triggerRadiusM, b.thumbnailUrl ?? null, me.id, b.categoryCode]);
     await upsertVi(c, id, b);
     // noi dung goc doi -> ban dich may cu khong con dung, cho dich lai khi duyet
     await c.query(
