@@ -45,7 +45,6 @@ linhung-guide/
 ├── scripts/smoke.mjs           kiểm thử tự động các luồng chính
 └── docs/
     ├── VNPAY.md                tích hợp VNPAY Sandbox
-    ├── system-presentation.html  trang thuyết minh kiến trúc (14 chương, sơ đồ Mermaid), mở bằng trình duyệt
     ├── data/poi-seed.sample.csv  file CSV mẫu để nhập POI
     └── poi-suggestions/        bản phác thảo cũ (geofence.ts, worker.py), đã được thay bằng code thật
 ```
