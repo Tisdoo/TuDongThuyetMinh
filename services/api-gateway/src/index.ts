@@ -38,6 +38,9 @@ const PUBLIC: Array<[string, RegExp]> = [
   ['POST', /^\/api\/auth\/(exchange|exchange-short)$/],
   ['POST', /^\/api\/auth\/staff\/(login|refresh|logout)$/],
   ['POST', /^\/api\/auth\/owner\/(register|registration-status)$/],
+  // Dich chu giao dien web du khach: khach chua mua ve cung can (poi-service tu cache, gioi han kich thuoc)
+  ['POST', /^\/api\/poi\/i18n$/],
+  ['GET', /^\/api\/poi\/languages$/],
 ];
 const isPublic = (req: Request) => PUBLIC.some(([m, re]) => m === req.method && re.test(req.path));
 
@@ -85,10 +88,54 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'api-gateway
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 200, standardHeaders: true, legacyHeaders: false }));
 app.use(['/api/auth/exchange', '/api/auth/exchange-short', '/api/auth/staff/login', '/api/auth/owner/register', '/api/auth/owner/registration-status'],
   rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/poi/i18n', rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }));
 app.use(['/api/payments/online', '/api/payments/cash', '/api/payments/momo-qr'],
   rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false }));
 
 app.use(authenticate);
+
+// ---------- Du khach dang online (presence) ----------
+// Trang du khach goi heartbeat moi 30 giay khi dang mo, goi leave khi dong/roi trang.
+// Luu trong Redis sorted set: member = jti (ma phien), score = thoi diem heartbeat cuoi (ms).
+// Qua PRESENCE_TTL_MS khong co heartbeat (tat may, mat mang, trinh duyet bi treo) thi khong tinh nua.
+const PRESENCE_KEY = 'presence:tourists';
+const PRESENCE_TTL_MS = 70_000; // ~2 lan heartbeat bi lo van con tinh, tranh nhap nhay so lieu
+
+app.post('/api/presence/heartbeat', async (req, res) => {
+  if (req.headers['x-user-role'] !== 'TOURIST') return deny(res, 403, 'FORBIDDEN');
+  const sid = String(req.headers['x-session-id'] ?? '');
+  if (!sid) return deny(res, 400, 'NO_SESSION');
+  try {
+    await redis.zadd(PRESENCE_KEY, Date.now(), sid);
+    res.status(204).end();
+  } catch {
+    deny(res, 503, 'PRESENCE_UNAVAILABLE');
+  }
+});
+
+app.post('/api/presence/leave', async (req, res) => {
+  const sid = String(req.headers['x-session-id'] ?? '');
+  try {
+    if (req.headers['x-user-role'] === 'TOURIST' && sid) await redis.zrem(PRESENCE_KEY, sid);
+    res.status(204).end();
+  } catch {
+    deny(res, 503, 'PRESENCE_UNAVAILABLE');
+  }
+});
+
+// Duong dan co "/admin/" nen da bi STAFF_ONLY chan du khach; o day kiem tra them role.
+app.get('/api/presence/admin/online', async (req, res) => {
+  const role = String(req.headers['x-user-role'] ?? '');
+  if (!['ADMIN', 'CONTENT_EDITOR'].includes(role)) return deny(res, 403, 'FORBIDDEN');
+  try {
+    const now = Date.now();
+    await redis.zremrangebyscore(PRESENCE_KEY, '-inf', now - PRESENCE_TTL_MS); // don phien da im lang qua lau
+    const online = await redis.zcard(PRESENCE_KEY);
+    res.json({ online, windowSec: PRESENCE_TTL_MS / 1000 });
+  } catch {
+    deny(res, 503, 'PRESENCE_UNAVAILABLE');
+  }
+});
 
 // KHONG dung express.json() o day: proxy can stream body nguyen ven (webhook can raw body)
 const proxy = (prefix: string, target: string) =>

@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import { PoolClient } from 'pg';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -9,7 +8,7 @@ import { pool, tx } from '../db';
  * Chu dia diem (OWNER) tu quan ly POI cua minh.
  * - Chi thay/sua/xoa POI do chinh minh tao (loc theo owner_id = x-user-id do Gateway gan).
  * - Moi lan tao hoac sua: POI ve DRAFT + review_status PENDING, cho Admin/Bien tap duyet.
- * - Chu quan chi nhap noi dung tieng Viet; ban dich va audio duoc tao tu dong SAU KHI duyet.
+ * - Chu quan chi nhap noi dung tieng Viet; ban dich va audio duoc tao tu dong khi du khach chon ngon ngu.
  */
 export const ownerRouter = Router();
 ownerRouter.use('/poi/owner', requireRole('OWNER'));
@@ -17,7 +16,6 @@ ownerRouter.use('/poi/owner', requireRole('OWNER'));
 // Anh: URL http(s) hoac duong dan noi bo do nginx phuc vu (VD /img/chanh-dien.jpg trong tools/tourist/img/)
 const imageUrl = z.string().max(500).refine((v) => /^https?:\/\/\S+$/.test(v) || /^\/[A-Za-z0-9._~%\/-]+$/.test(v), 'Invalid image URL');
 const MAX_POIS_PER_OWNER = 10;
-const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 const uuid = (v: unknown) => z.string().uuid().parse(v);
 
 function ownerOf(req: any) {
@@ -43,23 +41,15 @@ type OwnerPoiInput = z.infer<typeof OwnerPoi>;
 
 async function upsertVi(c: PoolClient, poiId: string, b: OwnerPoiInput) {
   await c.query(
-    `INSERT INTO poi_translations (poi_id, lang_code, name, short_description, description, is_source,
-                                   translation_origin, status, content_hash)
-     VALUES ($1,'vi',$2,$3,$4,true,'SOURCE','TRANSLATED',$5)
-     ON CONFLICT (poi_id, lang_code) DO UPDATE SET
-       name=EXCLUDED.name, short_description=EXCLUDED.short_description, description=EXCLUDED.description,
-       status='TRANSLATED', content_hash=EXCLUDED.content_hash, audio_url=NULL, audio_duration_sec=NULL,
-       version=poi_translations.version+1, updated_at=now()`,
-    [poiId, b.name, b.shortDescription, b.description, sha256(`${b.name}\n${b.shortDescription}\n${b.description}`)]);
+    `UPDATE pois SET name=$2, short_description=$3, description=$4 WHERE id=$1`,
+    [poiId, b.name, b.shortDescription, b.description]);
 }
 
 const SELECT_OWN = `
   SELECT p.id, p.code, COALESCE(c.code, 'SHOP') AS category_code, p.latitude, p.longitude, p.trigger_radius_m, p.thumbnail_url, p.status,
          p.review_status, p.review_note, p.submitted_at, p.reviewed_at, p.created_at,
-         COALESCE(t.name,'') AS name, COALESCE(t.short_description,'') AS short_description,
-         COALESCE(t.description,'') AS description
-    FROM pois p LEFT JOIN poi_translations t ON t.poi_id = p.id AND t.lang_code = 'vi'
-                LEFT JOIN poi_categories c ON c.id = p.category_id
+         p.name, p.short_description, p.description
+    FROM pois p LEFT JOIN poi_categories c ON c.id = p.category_id
    WHERE p.owner_id = $1 AND p.status <> 'ARCHIVED'`;
 
 ownerRouter.get('/poi/owner/pois', ah(async (req, res) => {
@@ -115,10 +105,6 @@ ownerRouter.put('/poi/owner/pois/:id', ah(async (req, res) => {
         WHERE id=$1`,
       [id, b.latitude, b.longitude, b.triggerRadiusM, b.thumbnailUrl ?? null, me.id, b.categoryCode]);
     await upsertVi(c, id, b);
-    // noi dung goc doi -> ban dich may cu khong con dung, cho dich lai khi duyet
-    await c.query(
-      `UPDATE poi_translations SET status='PENDING', audio_url=NULL, audio_duration_sec=NULL, updated_at=now()
-        WHERE poi_id=$1 AND lang_code <> 'vi' AND translation_origin <> 'HUMAN'`, [id]);
   });
   res.json({ id, reviewStatus: 'PENDING' });
 }));

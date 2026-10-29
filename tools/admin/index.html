@@ -58,24 +58,53 @@ td,th{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;verti
 tr:last-child td{border-bottom:0}
 td button{padding:6px 10px;font-size:.84rem;margin:2px 4px 2px 0}
 pre{background:var(--surface-2);color:var(--ink);padding:12px;border-radius:10px;overflow:auto;max-height:280px;font-size:.84rem}
-nav.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:4px;background:var(--surface-2);border-radius:12px;margin:10px 0 4px}
-nav.tabs::-webkit-scrollbar{display:none}
-nav.tabs button{flex:none;border:0;background:none;margin:0;padding:8px 14px;border-radius:9px;color:var(--muted);white-space:nowrap}
-nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+/* Bố cục sau đăng nhập: menu điều khiển cột trái, nội dung cột phải */
+#main{display:grid;grid-template-columns:232px minmax(0,1fr);gap:22px;align-items:start}
+.side{position:sticky;top:78px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 10px;box-shadow:var(--shadow)}
+.side .who{padding:0 8px 12px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.side .who small{display:block;color:var(--muted);font-size:.76rem}
+.side .who b{display:block;font-size:.92rem;overflow-wrap:anywhere}
+.side .grp{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:10px 10px 4px}
+nav.tabs{display:flex;flex-direction:column;gap:2px}
+nav.tabs button{display:block;width:100%;text-align:left;border:0;background:none;margin:0;padding:9px 12px;border-radius:9px;color:var(--muted);white-space:nowrap}
+nav.tabs button:hover{background:var(--surface-2);color:var(--ink)}
+nav.tabs button.on{background:color-mix(in srgb, var(--red) 12%, transparent);color:var(--red);box-shadow:inset 3px 0 0 var(--red)}
+.side .links{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
+.side .links a{display:block;padding:7px 12px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:600}
+.side .links a:hover{background:var(--surface-2);color:var(--ink)}
+.side #btnLogout{width:100%;margin:8px 0 0}
+.content > .card:first-child{margin-top:0}
+/* Màn hình hẹp (điện thoại, tablet dọc): menu thành thanh cuộn ngang ở trên */
+@media (max-width:820px){
+  #main{grid-template-columns:minmax(0,1fr);gap:8px}
+  .side{position:static;padding:10px}
+  .side .grp,.side .links{display:none}
+  .side .who{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 10px}
+  nav.tabs{flex-direction:row;overflow-x:auto;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{width:auto;flex:none}
+  nav.tabs button.on{box-shadow:inset 0 -3px 0 var(--red)}
+  .side #btnLogout{width:auto;margin:0}
+}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
 .leaflet-container{font-family:var(--font)}
 
 #loginBox{max-width:420px;margin:40px auto}
 #loginBox b{display:block;font-size:1.1rem;margin-bottom:8px}
-#main > p:first-child{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px}
 #pickMap{height:360px;border-radius:12px;margin:10px 0;border:1px solid var(--line)}
 #tab-list > button:first-child{margin-bottom:8px}
 #saveMsg,#pubMsg,#opMsg,#ownerMsg,#listMsg{margin-top:8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px;margin-top:6px}
+.stat{background:var(--surface-2);border-radius:12px;padding:14px 16px}
+.stat .lbl{font-size:.84rem;color:var(--muted);font-weight:600}
+.stat .val{font-size:1.9rem;font-weight:800;letter-spacing:-.5px;line-height:1.2;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.stat .sub{font-size:.78rem;color:var(--muted)}
+.stat.live .lbl::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
 </style>
 </head>
 <body>
-<header class="topbar" style="--maxw:1080px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M6 17h22a11 9 0 0 1-22 0z" fill="#f3d38e"/><path d="M12 28h10v1.8H12z" fill="#f3d38e"/><path d="M19 13.5 28.5 5M22 14l7.5-6" stroke="#f3d38e" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13c-1.4-1.6 1.4-2.6 0-4.4M15 13c-1.4-1.6 1.4-2.6 0-4.4" stroke="#f3d38e" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/></svg><div><b>Quản trị POI</b><small>Ẩm thực Quận 5 · Nhập liệu quán ăn</small></div><span class="sp"></span><a href="/">Web App du khách</a><a href="/owner.html">Trang chủ quán</a></div></header>
-<main class="wrap" style="--maxw:1080px">
+<header class="topbar" style="--maxw:1280px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M6 17h22a11 9 0 0 1-22 0z" fill="#f3d38e"/><path d="M12 28h10v1.8H12z" fill="#f3d38e"/><path d="M19 13.5 28.5 5M22 14l7.5-6" stroke="#f3d38e" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13c-1.4-1.6 1.4-2.6 0-4.4M15 13c-1.4-1.6 1.4-2.6 0-4.4" stroke="#f3d38e" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/></svg><div><b>Quản trị POI</b><small>Ẩm thực Quận 5 · Nhập liệu quán ăn</small></div></div></header>
+<main class="wrap" style="--maxw:1280px">
 
 <section id="loginBox" class="card">
   <b>Đăng nhập (Admin hoặc Biên tập nội dung)</b>
@@ -86,17 +115,37 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
 </section>
 
 <section id="main" class="hidden">
-  <p>Đã đăng nhập: <b id="who"></b> <button id="btnLogout">Đăng xuất</button></p>
-  <nav class="tabs">
-    <button data-tab="list" class="on">Danh sách POI</button>
-    <button data-tab="edit">Thêm / Sửa quán ăn</button>
-    <button data-tab="csv">Nhập từ CSV</button>
-    <button data-tab="owners">Duyệt chủ quán</button>
-    <button data-tab="ownerpois">Duyệt POI chủ quán</button>
-    <button data-tab="publish">Publish</button>
-  </nav>
+  <!-- Menu điều khiển (cột trái). JS tìm nút theo selector "nav button" và data-tab. -->
+  <aside class="side">
+    <div class="who"><div><small>Đã đăng nhập</small><b id="who"></b></div><button id="btnLogout">Đăng xuất</button></div>
+    <nav class="tabs" aria-label="Menu quản trị">
+      <button data-tab="dash" class="on" aria-current="page">Tổng quan</button>
+        
+      <button data-tab="list">Danh sách POI</button>
+      <button data-tab="edit">Thêm / Sửa quán ăn</button>
+      <button data-tab="csv">Nhập từ CSV</button>
+      
+      <button data-tab="owners">Duyệt chủ quán</button>
+      <button data-tab="ownerpois">Duyệt POI chủ quán</button>
+      
+      <button data-tab="publish">Publish</button>
+    </nav>
+    <div class="links"><a href="/">Web App du khách</a><a href="/owner.html">Trang chủ quán</a></div>
+  </aside>
 
-  <div id="tab-list" class="card">
+  <div class="content">
+
+  <div id="tab-dash" class="card">
+    <div class="stats">
+      <div class="stat live"><div class="lbl">Khách đang active</div><div class="val" id="sOnline">–</div><div class="sub">Đang mở web app du khách</div></div>
+      <div class="stat"><div class="lbl">POI hiện có</div><div class="val" id="sPoi">–</div><div class="sub">Không tính POI đã lưu trữ</div></div>
+      <div class="stat"><div class="lbl">POI ẩn</div><div class="val" id="sHidden">–</div><div class="sub">Trạng thái DRAFT, du khách không thấy</div></div>
+      <div class="stat"><div class="lbl">Tổng doanh thu</div><div class="val" id="sRevenue">–</div><div class="sub">Các đơn đã thanh toán</div></div>
+    </div>
+    <div id="dashMsg" class="muted" style="margin-top:10px"></div>
+  </div>
+
+  <div id="tab-list" class="card hidden">
     <button id="btnReload">Làm mới</button>
     <table id="poiTable"></table>
     <div id="listMsg" class="muted"></div>
@@ -133,10 +182,7 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
     <label>Tên quán</label><input id="vi_name" placeholder="VD: Hủ tiếu Hà Tôn Quyền">
     <label>Mô tả ngắn (món chính, giá tham khảo)</label><input id="vi_short" placeholder="VD: Hủ tiếu Nam Vang, sủi cảo · 45.000 - 70.000đ">
     <label>Lời thuyết minh (nên 40 đến 80 từ, câu ngắn để giọng đọc nghe rõ)</label><textarea id="vi_desc" placeholder="VD: Quán mở từ những năm 1980, nổi tiếng với nước dùng hầm xương ngọt thanh. Nên gọi hủ tiếu khô kèm chén súp riêng. Quán đông nhất từ 17 đến 19 giờ."></textarea>
-    <h2>Bản dịch tiếng Anh (nên có)</h2>
-    <label>Eatery name</label><input id="en_name">
-    <label>Short description</label><input id="en_short">
-    <label>Description</label><textarea id="en_desc"></textarea>
+    <p class="muted">Chỉ cần nhập tiếng Việt. Khi du khách chọn ngôn ngữ khác, hệ thống tự dịch và tự đọc thành audio.</p>
     <label>Ảnh đại diện (tùy chọn): <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...</label><input id="f_thumb" placeholder="/img/hu-tieu-ha-ton-quyen.jpg">
     <p><button id="btnSave" class="primary">Lưu quán ăn</button> <button id="btnNew">Làm mới form</button></p>
     <div id="saveMsg"></div>
@@ -144,7 +190,7 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
 
   <div id="tab-csv" class="card hidden">
     <h2>Nhập nhiều POI từ file CSV</h2>
-    <p class="muted">Cột: code, name_vi, short_vi, desc_vi, name_en, short_en, desc_en, lat, lng, radius, category (11 Mì/hủ tiếu/bún, 12 Cơm/cháo, 13 Dimsum, 14 Chè/tráng miệng, 15 Trà/đồ uống, 16 Ăn vặt, 4 Quán ăn chung, 3 Tiện ích), priority, order, status, thumbnail (đường dẫn ảnh, ví dụ <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...). File lưu UTF-8; dấu phân cách dấu phẩy hoặc chấm phẩy đều được. POI đã có mã trùng sẽ được cập nhật.</p>
+    <p class="muted">Cột: code, name_vi, short_vi, desc_vi, lat, lng, radius, category (11 Mì/hủ tiếu/bún, 12 Cơm/cháo, 13 Dimsum, 14 Chè/tráng miệng, 15 Trà/đồ uống, 16 Ăn vặt, 4 Quán ăn chung, 3 Tiện ích), priority, order, status, thumbnail (đường dẫn ảnh, ví dụ <code>/img/ten-anh.jpg</code> nếu chép ảnh vào <code>tools/tourist/img/</code>, hoặc https://...). File lưu UTF-8; dấu phân cách dấu phẩy hoặc chấm phẩy đều được. POI đã có mã trùng sẽ được cập nhật.</p>
     <button id="btnTemplate">Tải file CSV mẫu</button>
     <input id="csvFile" type="file" accept=".csv,text/csv">
     <div id="csvPreview"></div>
@@ -163,7 +209,7 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
 
   <div id="tab-ownerpois" class="card hidden">
     <h2>POI do chủ quán gửi</h2>
-    <p class="muted">Chủ quán thêm POI tại <b>/owner.html</b>. Duyệt thì POI chuyển sang PUBLISHED và tự xếp việc dịch + tạo audio; sau đó vào tab <b>Publish</b> để đưa lên app. Từ chối bắt buộc ghi lý do. Chủ quán sửa POI thì POI quay về chờ duyệt.</p>
+    <p class="muted">Chủ quán thêm POI tại <b>/owner.html</b>. Duyệt thì POI chuyển sang PUBLISHED (bản dịch và audio tạo tự động khi du khách chọn ngôn ngữ); sau đó vào tab <b>Publish</b> để đưa lên app. Từ chối bắt buộc ghi lý do. Chủ quán sửa POI thì POI quay về chờ duyệt.</p>
     <select id="opFilter" style="width:auto"><option value="PENDING">Đang chờ duyệt</option><option value="">Tất cả</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Đã từ chối</option></select>
     <button id="btnOwnerPois">Tải danh sách</button>
     <table id="opTable"></table>
@@ -172,18 +218,15 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
 
   <div id="tab-publish" class="card hidden">
     <h2>Publish dataset</h2>
-    <p class="muted">Gộp mọi POI trạng thái PUBLISHED thành một phiên bản dataset mới. Du khách tải về sẽ thấy dữ liệu mới.</p>
+    <p class="muted">Gộp mọi POI trạng thái PUBLISHED thành một phiên bản dataset mới. Du khách tải về sẽ thấy dữ liệu mới. Sau khi Publish, hệ thống tự dịch sẵn sang các ngôn ngữ (cần Internet); audio được tạo khi du khách bấm nghe.</p>
     <button id="btnPublish" class="primary">Publish ngay</button>
     <button id="btnVerify">Xem dataset hiện tại</button>
     <div id="pubMsg"></div>
     <pre id="pubOut" class="hidden"></pre>
-    <h2>Audio tự động (dịch và đọc)</h2>
-    <p class="muted">Worker tự dịch tiếng Việt sang các ngôn ngữ khác rồi tạo MP3 (Edge-TTS). Cần Internet. Xong hãy bấm Publish để đưa audio lên app.</p>
-    <button id="btnRegen">Dịch và tạo audio cho tất cả POI</button> <button id="btnJobs">Xem tiến độ</button>
-    <pre id="jobOut">Chưa tải tiến độ.</pre>
     <h2>Lịch sử phiên bản</h2>
     <table id="verTable"></table>
   </div>
+  </div><!-- /.content -->
 </section>
 
 </main>
@@ -228,15 +271,36 @@ async function login() {
   enter();
 }
 function logout() { token = ''; sessionStorage.removeItem(TK); $('main').classList.add('hidden'); $('loginBox').classList.remove('hidden'); }
-function enter() { $('loginBox').classList.add('hidden'); $('main').classList.remove('hidden'); loadList(); }
+function enter() { $('loginBox').classList.add('hidden'); $('main').classList.remove('hidden'); loadList(); tab('dash'); }
+
+// ---------- Tổng quan (dashboard) ----------
+// Gọi 3 service song song; service nào lỗi thì chỉ ô đó hiện "lỗi", các ô khác vẫn có số.
+async function loadDash() {
+  const [online, poi, rev] = await Promise.all([
+    api('GET', '/presence/admin/online'),
+    api('GET', '/poi/admin/stats'),
+    api('GET', '/payments/admin/reports/summary'),
+  ]);
+  const show = (id, r, pick) => { $(id).textContent = r.status === 200 ? pick(r.data) : (r.status === 403 ? 'Chỉ ADMIN' : 'lỗi'); };
+  show('sOnline', online, (d) => d.online.toLocaleString('vi-VN'));
+  show('sPoi', poi, (d) => d.total.toLocaleString('vi-VN'));
+  show('sHidden', poi, (d) => d.hidden.toLocaleString('vi-VN'));
+  show('sRevenue', rev, (d) => d.totalRevenue.toLocaleString('vi-VN') + ' đ');
+  $('dashMsg').textContent = 'Cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN') + ' · tự làm mới mỗi 15 giây';
+}
 
 // ---------- Tab ----------
 function tab(name) {
-  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
-  ['list', 'edit', 'csv', 'owners', 'ownerpois', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
+  document.querySelectorAll('nav button').forEach((b) => {
+    const on = b.dataset.tab === name;
+    b.classList.toggle('on', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  ['dash', 'list', 'edit', 'csv', 'owners', 'ownerpois', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
   clearInterval(jobTimer);
+  if (name === 'dash') { loadDash(); jobTimer = setInterval(loadDash, 15000); }
   if (name === 'edit') { initMap(); setTimeout(() => map.invalidateSize(), 50); }
-  if (name === 'publish') { loadVersions(); loadJobs(); jobTimer = setInterval(loadJobs, 5000); }
+  if (name === 'publish') loadVersions();
   if (name === 'owners') loadOwners();
   if (name === 'ownerpois') loadOwnerPois();
   if (name === 'list') loadList();
@@ -249,12 +313,12 @@ async function loadList() {
   pois = r.data;
   const tb = $('poiTable'); tb.innerHTML = '';
   const head = document.createElement('tr');
-  ['Mã', 'Tên (vi)', 'Trạng thái', 'Ngôn ngữ đã dịch', 'Bán kính', ''].forEach((h) => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+  ['Mã', 'Tên (vi)', 'Trạng thái', 'Bán kính', ''].forEach((h) => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
   tb.appendChild(head);
   pois.forEach((p) => {
     const tr = document.createElement('tr');
     [p.code, (p.name || '(chưa có nội dung)') + (p.owner_name ? ' [chủ quán: ' + p.owner_name + ']' : ''),
-     p.status + (p.review_status && p.review_status !== 'NONE' ? ' / duyệt: ' + p.review_status : ''), String(p.translated_langs), p.trigger_radius_m + ' m'].forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+     p.status + (p.review_status && p.review_status !== 'NONE' ? ' / duyệt: ' + p.review_status : ''), p.trigger_radius_m + ' m'].forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
     const td = document.createElement('td');
     const be = document.createElement('button'); be.textContent = 'Sửa'; be.onclick = () => editPoi(p.id);
     const ba = document.createElement('button'); ba.textContent = 'Lưu trữ'; ba.onclick = () => archivePoi(p);
@@ -315,7 +379,7 @@ function useMyGps() {
 }
 function resetForm() {
   editingId = null; $('editTitle').textContent = 'Thêm POI mới';
-  ['f_code', 'f_lat', 'f_lng', 'f_thumb', 'vi_name', 'vi_short', 'vi_desc', 'en_name', 'en_short', 'en_desc'].forEach((id) => { $(id).value = ''; });
+  ['f_code', 'f_lat', 'f_lng', 'f_thumb', 'vi_name', 'vi_short', 'vi_desc'].forEach((id) => { $(id).value = ''; });
   $('f_code').disabled = false; $('f_cat').value = '11'; $('f_radius').value = '25'; $('f_priority').value = '0'; $('f_order').value = '0'; $('f_status').value = 'DRAFT';
   if (marker) { marker.remove(); marker = null; } if (circle) { circle.remove(); circle = null; }
   say($('saveMsg'), '', '');
@@ -329,13 +393,11 @@ async function editPoi(id) {
   $('f_code').value = p.code; $('f_code').disabled = true;
   $('f_cat').value = String(p.category_id || 4); $('f_radius').value = p.trigger_radius_m; $('f_priority').value = p.priority;
   $('f_order').value = p.display_order; $('f_status').value = p.status === 'ARCHIVED' ? 'DRAFT' : p.status; $('f_thumb').value = p.thumbnail_url || '';
-  const tr = (l) => (p.translations || []).find((x) => x.lang_code === l) || {};
-  $('vi_name').value = tr('vi').name || ''; $('vi_short').value = tr('vi').short_description || ''; $('vi_desc').value = tr('vi').description || '';
-  $('en_name').value = tr('en').name || ''; $('en_short').value = tr('en').short_description || ''; $('en_desc').value = tr('en').description || '';
+  $('vi_name').value = p.name || ''; $('vi_short').value = p.short_description || ''; $('vi_desc').value = p.description || '';
   initMap(); setCoords(p.latitude, p.longitude, true); drawOthers();
 }
 
-// Dùng chung cho form và CSV. Thứ tự quan trọng: lưu bản gốc vi trước, rồi mới lưu bản en.
+// Dùng chung cho form và CSV: lưu thông tin POI rồi lưu nội dung tiếng Việt (ngôn ngữ khác dịch tự động).
 async function upsertPoi(d) {
   let id = d.id;
   const body = {
@@ -350,12 +412,8 @@ async function upsertPoi(d) {
     const r = await api('PUT', '/poi/admin/pois/' + id, body);
     if (r.status !== 204) return { ok: false, error: 'Cập nhật POI: ' + errOf(r) };
   }
-  const v = await api('PUT', '/poi/admin/pois/' + id + '/translations/vi', { name: d.vi.name, shortDescription: d.vi.short || '', description: d.vi.desc });
+  const v = await api('PUT', '/poi/admin/pois/' + id + '/content', { name: d.vi.name, shortDescription: d.vi.short || '', description: d.vi.desc });
   if (v.status !== 200) return { ok: false, id, error: 'Lưu tiếng Việt: ' + errOf(v) };
-  if (d.en && d.en.name && d.en.desc) {
-    const e = await api('PUT', '/poi/admin/pois/' + id + '/translations/en', { name: d.en.name, shortDescription: d.en.short || '', description: d.en.desc });
-    if (e.status !== 200) return { ok: false, id, error: 'Lưu tiếng Anh: ' + errOf(e) };
-  }
   return { ok: true, id };
 }
 function validate(d) {
@@ -373,7 +431,6 @@ async function savePoi() {
     triggerRadiusM: num($('f_radius').value, 25), priority: num($('f_priority').value, 0), displayOrder: num($('f_order').value, 0),
     status: $('f_status').value, thumbnailUrl: $('f_thumb').value.trim(),
     vi: { name: $('vi_name').value.trim(), short: $('vi_short').value.trim(), desc: $('vi_desc').value.trim() },
-    en: { name: $('en_name').value.trim(), short: $('en_short').value.trim(), desc: $('en_desc').value.trim() },
   };
   const errs = validate(d);
   if (errs.length) { say($('saveMsg'), 'Chưa lưu: ' + errs.join('; '), 'err'); return; }
@@ -405,7 +462,7 @@ function parseCsv(text) {
 function csvToData(rows) {
   const head = rows[0].map((h) => h.trim().toLowerCase());
   const col = (...names) => head.findIndex((h) => names.includes(h));
-  const ix = { code: col('code'), nv: col('name_vi'), sv: col('short_vi'), dv: col('desc_vi'), ne: col('name_en'), se: col('short_en'), de: col('desc_en'),
+  const ix = { code: col('code'), nv: col('name_vi'), sv: col('short_vi'), dv: col('desc_vi'),
     lat: col('lat', 'latitude'), lng: col('lng', 'lon', 'longitude'), rad: col('radius'), cat: col('category'), pri: col('priority'), ord: col('order'), st: col('status'), img: col('thumbnail', 'image', 'thumbnail_url') };
   const g = (r, i) => (i >= 0 && r[i] !== undefined ? r[i].trim() : '');
   return rows.slice(1).map((r) => ({
@@ -413,7 +470,7 @@ function csvToData(rows) {
     triggerRadiusM: num(g(r, ix.rad), 25), priority: num(g(r, ix.pri), 0), displayOrder: num(g(r, ix.ord), 0),
     status: ['DRAFT', 'PUBLISHED'].includes(g(r, ix.st).toUpperCase()) ? g(r, ix.st).toUpperCase() : 'PUBLISHED',
     thumbnailUrl: g(r, ix.img),
-    vi: { name: g(r, ix.nv), short: g(r, ix.sv), desc: g(r, ix.dv) }, en: { name: g(r, ix.ne), short: g(r, ix.se), desc: g(r, ix.de) },
+    vi: { name: g(r, ix.nv), short: g(r, ix.sv), desc: g(r, ix.dv) },   // cột *_en của file CSV cũ (nếu có) được bỏ qua
   }));
 }
 function previewCsv(text) {
@@ -454,10 +511,10 @@ async function importCsv() {
 function downloadTemplate() {
   const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
   const rows = [
-    ['code', 'name_vi', 'short_vi', 'desc_vi', 'name_en', 'short_en', 'desc_en', 'lat', 'lng', 'radius', 'category', 'priority', 'order', 'status', 'thumbnail'],
-    ['HU_TIEU_HTQ', 'Hủ tiếu Hà Tôn Quyền', 'Hủ tiếu, sủi cảo · khoảng 40.000 - 70.000đ', 'Đường Hà Tôn Quyền nổi tiếng với các quán hủ tiếu và sủi cảo người Hoa. Nên thử hủ tiếu khô ăn kèm chén súp riêng. (Nội dung mẫu, hãy thay bằng thông tin thật của quán.)', 'Ha Ton Quyen noodle shop', 'Noodles and wontons · about 40,000 - 70,000 VND', 'Ha Ton Quyen street is famous for Chinese-style noodle and wonton shops. Try the dry noodles with a separate bowl of broth. (Sample text, replace with real details.)', '10.7560', '106.6560', '25', '11', '10', '1', 'PUBLISHED', '/img/hu-tieu.jpg'],
-    ['DIMSUM_Q5', 'Quán dimsum Chợ Lớn', 'Há cảo, xíu mại, bánh bao · buổi sáng', 'Dimsum là bữa điểm tâm quen thuộc của người Hoa ở Chợ Lớn, thường ăn kèm trà nóng. Nên đến sớm vì nhiều món hết trước trưa. (Nội dung mẫu.)', 'Cho Lon dim sum house', 'Har gow, siu mai, buns · mornings', 'Dim sum is the classic breakfast of Cho Lon, usually enjoyed with hot tea. Come early, many items sell out before noon. (Sample text.)', '10.7535', '106.6635', '25', '13', '5', '2', 'PUBLISHED', '/img/dimsum.jpg'],
-    ['CHE_Q5', 'Chè người Hoa', 'Chè mè đen, sâm bổ lượng · buổi tối', 'Quận 5 có nhiều quán chè kiểu Hoa như chè mè đen, chè hột gà trà, sâm bổ lượng. Món ngọt mát, hợp để kết thúc buổi tối. (Nội dung mẫu.)', 'Chinese dessert stall', 'Black sesame soup, sam bo luong · evenings', 'District 5 has many Chinese-style dessert stalls serving black sesame soup and sam bo luong. A sweet, cooling way to end the evening. (Sample text.)', '10.7548', '106.6662', '20', '14', '0', '3', 'PUBLISHED', ''],
+    ['code', 'name_vi', 'short_vi', 'desc_vi', 'lat', 'lng', 'radius', 'category', 'priority', 'order', 'status', 'thumbnail'],
+    ['HU_TIEU_HTQ', 'Hủ tiếu Hà Tôn Quyền', 'Hủ tiếu, sủi cảo · khoảng 40.000 - 70.000đ', 'Đường Hà Tôn Quyền nổi tiếng với các quán hủ tiếu và sủi cảo người Hoa. Nên thử hủ tiếu khô ăn kèm chén súp riêng. (Nội dung mẫu, hãy thay bằng thông tin thật của quán.)', '10.7560', '106.6560', '25', '11', '10', '1', 'PUBLISHED', '/img/hu-tieu.jpg'],
+    ['DIMSUM_Q5', 'Quán dimsum Chợ Lớn', 'Há cảo, xíu mại, bánh bao · buổi sáng', 'Dimsum là bữa điểm tâm quen thuộc của người Hoa ở Chợ Lớn, thường ăn kèm trà nóng. Nên đến sớm vì nhiều món hết trước trưa. (Nội dung mẫu.)', '10.7535', '106.6635', '25', '13', '5', '2', 'PUBLISHED', '/img/dimsum.jpg'],
+    ['CHE_Q5', 'Chè người Hoa', 'Chè mè đen, sâm bổ lượng · buổi tối', 'Quận 5 có nhiều quán chè kiểu Hoa như chè mè đen, chè hột gà trà, sâm bổ lượng. Món ngọt mát, hợp để kết thúc buổi tối. (Nội dung mẫu.)', '10.7548', '106.6662', '20', '14', '0', '3', 'PUBLISHED', ''],
   ];
   const csv = '\uFEFF' + rows.map((r) => r.map(q).join(',')).join('\r\n');
   const a = document.createElement('a');
@@ -571,26 +628,10 @@ async function reviewOwnerPoi(p, approve) {
   if (note === null) return;
   if (!approve && note.trim().length < 3) { alert('Cần ghi lý do từ chối.'); return; }
   const r = await api('POST', '/poi/admin/owner-pois/' + p.id + (approve ? '/approve' : '/reject'), { note: note.trim() || undefined });
-  if (approve && r.status === 200) say($('opMsg'), 'Đã duyệt ' + p.code + '. Đã xếp ' + r.data.translateQueued + ' việc dịch, ' + r.data.ttsQueued + ' việc tạo audio. Vào tab Publish khi xong.', 'ok');
+  if (approve && r.status === 200) say($('opMsg'), 'Đã duyệt ' + p.code + '. Vào tab Publish để đưa lên app (bản dịch và audio tạo tự động).', 'ok');
   else if (!approve && r.status === 204) say($('opMsg'), 'Đã từ chối ' + p.code + '.', 'ok');
   else { alert('Lỗi: ' + errOf(r)); }
   loadOwnerPois();
-}
-
-// ---------- Audio tự động ----------
-async function regenerate() {
-  if (!confirm('Xếp việc dịch và tạo audio cho mọi POI chưa có? (không ghi đè bản dịch tay)')) return;
-  const r = await api('POST', '/poi/admin/regenerate', {});
-  if (r.status !== 200) { $('jobOut').textContent = 'Lỗi: ' + errOf(r); return; }
-  $('jobOut').textContent = 'Đã xếp ' + r.data.translateQueued + ' việc dịch và ' + r.data.ttsQueued + ' việc tạo audio. Đang theo dõi...';
-  setTimeout(loadJobs, 1500);
-}
-async function loadJobs() {
-  const r = await api('GET', '/poi/admin/jobs');
-  if (r.status !== 200) { $('jobOut').textContent = 'Lỗi: ' + errOf(r); return; }
-  const lines = r.data.map((x) => x.status.padEnd(8) + ' ' + x.job_type.padEnd(9) + x.n);
-  const pending = r.data.filter((x) => x.status === 'QUEUED' || x.status === 'RUNNING').reduce((a, x) => a + x.n, 0);
-  $('jobOut').textContent = (lines.length ? lines.join('\n') : 'Chưa có việc nào.') + '\n\n' + (pending ? 'Còn ' + pending + ' việc đang chạy, tự làm mới mỗi 5 giây...' : 'Không còn việc chờ. Bấm Publish để đưa audio lên app.');
 }
 
 // ---------- Sự kiện ----------
@@ -602,7 +643,7 @@ $('btnTemplate').onclick = downloadTemplate; $('btnImport').onclick = importCsv;
 $('csvFile').onchange = (e) => { const f = e.target.files[0]; if (f) f.text().then(previewCsv); };
 $('btnPublish').onclick = publishNow; $('btnVerify').onclick = verify;
 $('btnOwnerPois').onclick = loadOwnerPois; $('opFilter').onchange = loadOwnerPois;
-$('btnOwners').onclick = loadOwners; $('ownerFilter').onchange = loadOwners; $('btnRegen').onclick = regenerate; $('btnJobs').onclick = loadJobs;
+$('btnOwners').onclick = loadOwners; $('ownerFilter').onchange = loadOwners;
 if (token) { $('who').textContent = 'quản trị'; enter(); }
 })();
 </script>

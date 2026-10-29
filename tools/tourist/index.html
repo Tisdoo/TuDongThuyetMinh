@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-/* Bảng màu lấy từ phố Chợ Lớn: đỏ đèn lồng, vàng hoành phi, xanh ngói cũ, nền giấy dó. */
+
 :root{
   --bar:60px; --nav:64px;
   --bg:#f4f3ef; --surface:#ffffff; --surface-2:#eceae4; --ink:#1c1f1e; --muted:#5d6461; --line:#dcdad3;
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
       </div>
       <div class="paylist">
         <button id="btnOnline" class="payopt"><span class="pi"><svg><use href="#i-card"/></svg></span><span><b data-i18n="payOnline"></b><span data-i18n="payOnlineSub"></span></span></button>
-        <button id="btnMomo" class="payopt"><span class="pi"><svg><use href="#i-qr"/></svg></span><span><b data-i18n="payMomo"></b><span data-i18n="payMomoSub"></span></span></button>
+        <button id="btnMomo" class="payopt hidden"><span class="pi"><svg><use href="#i-qr"/></svg></span><span><b data-i18n="payMomo"></b><span data-i18n="payMomoSub"></span></span></button>
         <button id="btnCash" class="payopt"><span class="pi"><svg><use href="#i-cash"/></svg></span><span><b data-i18n="payCash"></b><span data-i18n="payCashSub"></span></span></button>
       </div>
       <p class="muted small" data-i18n="mockNote"></p>
@@ -571,7 +571,8 @@ const T = {
     payMomo: 'Thanh toán MoMo', momoTitle: 'Thanh toán bằng MoMo',
     momoStep1: 'Mở MoMo, quét mã QR bên dưới và chuyển đúng số tiền.', momoNote: 'Ghi nội dung chuyển tiền là:',
     momoWaiting: 'Đang chờ nhân viên xác nhận đã nhận tiền...', momoHint: 'Sau khi chuyển, giữ nguyên màn hình này. Ứng dụng sẽ tự mở khi nhân viên xác nhận.',
-    momoExpired: 'Đơn đã hết hạn hoặc không hợp lệ.', audioPre: 'Giọng đọc thu sẵn', audioLocal: 'Giọng đọc của thiết bị', audioPreview: 'Giới thiệu ngắn',
+    momoExpired: 'Đơn đã hết hạn hoặc không hợp lệ.', audioPre: 'Giọng đọc AI', audioLocal: 'Giọng đọc của thiết bị', audioPreview: 'Giới thiệu ngắn',
+    translating: 'Đang dịch nội dung sang ngôn ngữ đã chọn...', translateFail: 'Chưa dịch được (kiểm tra mạng), tạm hiển thị tiếng Việt.',
     min: '{n} phút', cat_NOODLE: 'Mì · hủ tiếu · bún', cat_RICE: 'Cơm · cháo', cat_DIMSUM: 'Dimsum · điểm tâm', cat_DESSERT: 'Chè · tráng miệng',
     cat_DRINK: 'Trà · đồ uống', cat_SNACK: 'Ăn vặt', cat_SHOP: 'Quán ăn', cat_FACILITY: 'Tiện ích', cat_STATUE: 'Di tích', cat_HALL: 'Công trình', cat_OTHER: 'Địa điểm'
   },
@@ -613,7 +614,8 @@ const T = {
     payMomo: 'Pay with MoMo', momoTitle: 'Pay with MoMo',
     momoStep1: 'Open MoMo, scan the QR code below and transfer the exact amount.', momoNote: 'Use this as the transfer message:',
     momoWaiting: 'Waiting for staff to confirm the payment...', momoHint: 'After transferring, keep this screen open. The app opens automatically once staff confirm.',
-    momoExpired: 'The order expired or is invalid.', audioPre: 'Recorded narration', audioLocal: 'Device voice', audioPreview: 'Short introduction',
+    momoExpired: 'The order expired or is invalid.', audioPre: 'AI narration', audioLocal: 'Device voice', audioPreview: 'Short introduction',
+    translating: 'Translating content into your language...', translateFail: 'Translation unavailable (check the network), showing Vietnamese for now.',
     min: '{n} min', cat_NOODLE: 'Noodles', cat_RICE: 'Rice & congee', cat_DIMSUM: 'Dim sum', cat_DESSERT: 'Desserts',
     cat_DRINK: 'Tea & drinks', cat_SNACK: 'Snacks', cat_SHOP: 'Eatery', cat_FACILITY: 'Facility', cat_STATUE: 'Landmark', cat_HALL: 'Building', cat_OTHER: 'Place'
   }
@@ -635,6 +637,39 @@ function normalizeLang(l) {
 }
 let lang = store.get(K.lang) || normalizeLang(navigator.language);
 const t = (key) => (T[lang] && T[lang][key]) ?? T.en[key] ?? key;
+
+// ---------- Chữ giao diện cho ngôn ngữ ngoài vi/en: dịch tự động từ bảng T.en ----------
+// Server dịch một lần cho mỗi ngôn ngữ (cache RAM); app lưu bản dịch vào localStorage, lần sau mở là có ngay.
+// Khoá cache gồm "hash" của bảng T.en: sửa chữ tiếng Anh trong code thì bản dịch cũ tự bị bỏ.
+let serverLangs = null;                                    // danh sách ngôn ngữ lấy từ server (biến LANGUAGES)
+const langList = () => (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : (serverLangs || ALL_LANGS);
+const uiHash = (() => { const s = JSON.stringify(T.en); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); })();
+const uiLoading = {};
+async function loadUiStrings(code) {
+  if (T[code]) return true;                                // vi, en có sẵn; ngôn ngữ đã dịch trong phiên này
+  const key = 'll_ui:' + code + ':' + uiHash;
+  try { const c = JSON.parse(store.get(key) || 'null'); if (c) { T[code] = c; return true; } } catch { /* bỏ qua */ }
+  if (!uiLoading[code]) {
+    uiLoading[code] = api('POST', '/poi/i18n', { body: { lang: code, source: 'en', strings: T.en } })
+      .then((r) => {
+        if (r.status !== 200 || !r.data || !r.data.strings) return false;
+        T[code] = r.data.strings; store.set(key, JSON.stringify(r.data.strings)); return true;
+      })
+      .catch(() => false)
+      .finally(() => { delete uiLoading[code]; });
+  }
+  return uiLoading[code];
+}
+// Tải chữ giao diện cho ngôn ngữ hiện tại; xong thì vẽ lại các phần có chữ (trong lúc chờ hiện tiếng Anh)
+function ensureUi(code) {
+  if (T[code]) return;
+  loadUiStrings(code).then((ok) => { if (ok && lang === code) rerenderAll(); });
+}
+function rerenderAll() {
+  renderStatic(); buildLangMenu(); renderHero(); renderChips(); renderGrid(); renderList(); renderPrice();
+  if (currentPoi) fillDetail(currentPoi);
+  if (map) drawPois();
+}
 
 let dataset = null, product = null, map = null, userMarker = null, accCircle = null, routeLine = null;
 let lastFix = null, watchId = null, engine = null, currentPoi = null, bannerPoi = null, bannerTimer = null;
@@ -708,7 +743,32 @@ async function api(method, path, { body, auth, headers } = {}) {
   return { status: res.status, data };
 }
 const errCode = (r) => (r && r.data && r.data.error && r.data.error.code) || ('HTTP_' + (r && r.status));
+
+// ---------- Báo "đang online" cho dashboard admin ----------
+// Khi trang đang mở: gửi heartbeat mỗi 30 giây. Khi đóng tab / rời trang: gửi leave.
+// keepalive: true để trình duyệt vẫn gửi được request dù trang đang bị đóng (khác fetch thường).
+const HEARTBEAT_MS = 30000;
+let hbTimer = null;
+function sendPresence(kind) {
+  const tk = getToken();
+  if (!tk) return;
+  fetch(API + '/presence/' + kind, { method: 'POST', headers: { authorization: 'Bearer ' + tk }, keepalive: true }).catch(() => {});
+}
+function startPresence() {
+  if (hbTimer || !getToken()) return;
+  sendPresence('heartbeat');
+  hbTimer = setInterval(() => { if (getToken()) sendPresence('heartbeat'); else stopPresence(false); }, HEARTBEAT_MS);
+}
+function stopPresence(leave) {
+  clearInterval(hbTimer); hbTimer = null;
+  if (leave) sendPresence('leave');
+}
+window.addEventListener('pagehide', () => stopPresence(true));               // đóng tab, tải lại, chuyển trang
+window.addEventListener('pageshow', (e) => { if (e.persisted) startPresence(); }); // quay lại bằng nút Back (bfcache)
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hbTimer) sendPresence('heartbeat'); });
+
 function logout(expired) {
+  stopPresence(true);
   store.del(K.token); autoplay = false; $('btnAuto').classList.remove('on');
   stopSpeech(); if (!$('detail').classList.contains('hidden')) closeDetail();
   $('banner').classList.add('hidden');
@@ -720,6 +780,7 @@ async function saveToken(data) {
   store.set(K.token, data.accessToken);
   store.del(PENDING, true); store.del(PENDING_MOMO, true);
   await loadAndRender();
+  startPresence();
   setView('home'); toast(t('unlocked'), 5000);
 }
 
@@ -736,7 +797,7 @@ async function showPay() {
 }
 function renderPayLangs() {
   const box = $('payLangs'); if (!box) return; box.innerHTML = '';
-  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : ALL_LANGS;
+  const list = langList();
   list.forEach((l) => { const b = el('button', l.code === lang ? 'on' : '', l.nativeName || l.name); b.type = 'button'; b.onclick = () => setLang(l.code); box.appendChild(b); });
 }
 function renderPrice() {
@@ -857,11 +918,13 @@ function openTicket() {
   showPay();
 }
 
-// ---------- Dữ liệu: bản đầy đủ (có vé) hoặc bản xem trước (công khai) ----------
+// ---------- Dữ liệu: tải theo ngôn ngữ đang chọn ----------
+// Server dịch từ bản tiếng Việt khi có người chọn ngôn ngữ đó (không lưu bản dịch trong CSDL).
+// Mỗi ngôn ngữ cache riêng một bản trong localStorage; gửi lại ETag server trả về để nhận 304 nếu chưa đổi.
 async function fetchVersioned(path, key, auth) {
   let cached = null;
   try { cached = JSON.parse(store.get(key) || 'null'); } catch { /* bỏ qua */ }
-  const headers = cached && cached.version ? { 'if-none-match': '"' + (auth ? 'v' : 'p') + cached.version + '"' } : {};
+  const headers = cached && cached.etag ? { 'if-none-match': cached.etag } : {};
   const r = await api('GET', path, { auth, headers });
   if (r.status === 200) { store.set(key, JSON.stringify(r.data)); return { data: r.data }; }
   if (r.status === 304 && cached) return { data: cached };
@@ -875,15 +938,17 @@ async function loadData() {
   emptyMsg = '';
   if (!getToken()) { dataset = null; return; }
   let res;
+  const key = K.data + ':' + lang;
   try {
-    res = await fetchVersioned('/poi/dataset/latest', K.data, true);
+    res = await fetchVersioned('/poi/dataset/latest?lang=' + encodeURIComponent(lang), key, true);
     if (res.unauthorized) { dataset = null; return; }
   } catch {
-    const c = store.get(K.data);
+    const c = store.get(key);
     res = c ? { data: JSON.parse(c) } : { error: 'NETWORK' };
   }
   if (res.empty) emptyMsg = t('noDataset');
   dataset = res.data || null;
+  if (dataset && dataset.translationFailed) toast(t('translateFail'), 6000);
   if (res.error) emptyMsg = res.error === 'NETWORK' ? t('networkError') : t('errTitle') + ' (' + res.error + ')';
 }
 async function loadAndRender() {
@@ -896,7 +961,7 @@ async function loadAndRender() {
 
 // ---------- Nội dung, ảnh, loại ----------
 function langName(code) {
-  const l = ((dataset && dataset.languages) || DEFAULT_LANGS).find((x) => x.code === code);
+  const l = langList().find((x) => x.code === code);
   return l ? l.nativeName || l.name : code;
 }
 function content(poi) {
@@ -967,7 +1032,7 @@ const indexOf = (poi) => (dataset ? dataset.pois.indexOf(poi) + 1 : 0);
 // ---------- Trang chủ ----------
 function renderHero() {
   const box = $('heroLangs'); box.innerHTML = '';
-  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : DEFAULT_LANGS;
+  const list = langList();
   list.forEach((l) => {
     const b = el('button', l.code === lang ? 'on' : '', l.nativeName || l.name);
     b.onclick = () => setLang(l.code); box.appendChild(b);
@@ -1298,12 +1363,27 @@ function speak(text, code) {
 const player = new Audio();
 const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 player.ontimeupdate = () => { if (player.duration) setProgress(player.currentTime / player.duration); };
+// Audio do server tạo theo yêu cầu (/api/poi/tts/...) cần token. Thẻ <audio src> không gửi được header
+// Authorization nên tải bằng fetch rồi phát từ blob. Giữ blob trong phiên để nghe lại không phải tải lại.
+const audioBlobs = new Map();
+async function audioSrc(url) {
+  if (!url.startsWith(API + '/')) return url;
+  if (audioBlobs.has(url)) return audioBlobs.get(url);
+  const tk = getToken();
+  if (!tk) throw new Error('NO_TOKEN');
+  const r = await fetch(url, { headers: { authorization: 'Bearer ' + tk } });
+  if (!r.ok) throw new Error('HTTP_' + r.status);
+  const src = URL.createObjectURL(await r.blob());
+  audioBlobs.set(url, src);
+  return src;
+}
 function playAudio(url, onFail) {
   const tok = speakTok;
   player.onended = () => { if (tok === speakTok) endPlayback(); };
   player.onerror = () => { if (tok === speakTok) onFail(); };
-  player.src = url;
-  player.play().catch(() => { if (tok === speakTok) onFail(); });
+  audioSrc(url)
+    .then((src) => { if (tok !== speakTok) return; player.src = src; return player.play(); })
+    .catch(() => { if (tok === speakTok) onFail(); });   // lỗi mạng/TTS -> đọc bằng giọng của thiết bị
 }
 function playPoi(poi) {
   const { c, code } = content(poi);
@@ -1351,7 +1431,7 @@ function togglePause() {
 
 // ---------- Ngôn ngữ ----------
 function buildLangMenu() {
-  const list = (dataset && dataset.languages && dataset.languages.length) ? dataset.languages : ALL_LANGS;
+  const list = langList();
   const menu = $('langMenu'); menu.innerHTML = '';
   list.forEach((l) => {
     const b = el('button', l.code === lang ? 'active' : '');
@@ -1366,6 +1446,12 @@ function setLang(code) {
   $('langMenu').classList.add('hidden');
   if (currentPoi) fillDetail(currentPoi);
   if (map) drawPois();
+  ensureUi(code);   // chữ giao diện (nút, tiêu đề...) của ngôn ngữ mới
+  // Nội dung quán: tải bản dịch của ngôn ngữ mới (lần đầu server dịch mất vài giây, sau đó có ngay)
+  if (getToken() && dataset && dataset.lang !== code) {
+    if (!dataset.pois.some((p) => p.translations && p.translations[code])) toast(t('translating'), 3000);
+    loadAndRender();
+  }
 }
 
 // ---------- Sự kiện ----------
@@ -1413,6 +1499,11 @@ $('btnSim').onclick = () => {
 // ---------- Khởi động ----------
 async function boot() {
   renderStatic(); buildLangMenu();
+  ensureUi(lang);
+  // Danh sách ngôn ngữ theo cấu hình server (để màn hình chào mừng hiện đúng cả khi chưa có vé)
+  api('GET', '/poi/languages').then((r) => {
+    if (r.status === 200 && Array.isArray(r.data) && r.data.length) { serverLangs = r.data; renderStatic(); buildLangMenu(); renderHero(); }
+  }).catch(() => {});
   const onReturn = location.pathname.startsWith('/payment/return');
   if (getToken()) await loadAndRender();
   if (onReturn) return handleReturn();
@@ -1423,6 +1514,7 @@ async function boot() {
     if (pending) return startPolling(pending);
   }
   if (!getToken()) { showPay(); return; }
+  startPresence();
   setView('home');
   // Vé hết hạn trong lúc đang dùng: khóa app, quay về màn hình mua vé
   setInterval(() => { if (dataset && !getToken()) logout(true); }, 60000);

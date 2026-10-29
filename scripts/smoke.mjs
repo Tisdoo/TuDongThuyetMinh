@@ -86,6 +86,8 @@ const prev = await call('GET', '/poi/dataset/latest');
 check('chưa có vé: không tải được dữ liệu POI -> 401', prev.status === 401);
 const withTok = await call('GET', '/poi/dataset/latest', { token: T });
 check('token khách hợp lệ -> qua gateway (200 hoặc 404 chưa publish)', withTok.status === 200 || (withTok.status === 404 && code(withTok) === 'NO_PUBLISHED_DATASET'), `(status ${withTok.status})`);
+const badLang = await call('GET', '/poi/dataset/latest?lang=xx', { token: T });
+check('ngôn ngữ không hỗ trợ -> 400 UNSUPPORTED_LANGUAGE', badLang.status === 400 && code(badLang) === 'UNSUPPORTED_LANGUAGE', `(status ${badLang.status})`);
 const tourAdmin = await call('GET', '/payments/admin/orders', { token: T });
 check('token khách gọi API nhân viên -> 403', tourAdmin.status === 403);
 const staffAdminOnly = await call('GET', '/payments/admin/products', { token: S });
@@ -148,7 +150,7 @@ check('admin thấy POI chờ duyệt kèm tên chủ quán', pend.status === 20
 const rejNoNote = await call('POST', `/poi/admin/owner-pois/${op.data?.id}/reject`, { token: A, body: {} });
 check('từ chối không ghi lý do -> 400', rejNoNote.status === 400);
 const okPoi = await call('POST', `/poi/admin/owner-pois/${op.data?.id}/approve`, { token: A, body: { note: 'OK' } });
-check('admin duyệt POI -> 200, xếp việc dịch', okPoi.status === 200 && okPoi.data?.translateQueued >= 1, JSON.stringify(okPoi.data));
+check('admin duyệt POI -> 200', okPoi.status === 200 && okPoi.data?.approved === true, JSON.stringify(okPoi.data));
 const okPoi2 = await call('POST', `/poi/admin/owner-pois/${op.data?.id}/approve`, { token: A, body: {} });
 check('duyệt lần 2 -> 409 ALREADY_REVIEWED', okPoi2.status === 409 && code(okPoi2) === 'ALREADY_REVIEWED');
 const edit = await call('PUT', `/poi/owner/pois/${op.data?.id}`, { token: O, body: { ...poiBody, name: 'Quan thu nghiem (sua)' } });

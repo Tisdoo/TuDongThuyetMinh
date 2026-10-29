@@ -76,10 +76,22 @@ services:
     environment:
       PORT: 4003
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/poi_db
+      CONTENT_URL: http://content-service:4005
+      # Danh sach ngon ngu app hien thi (ma Google Translate). Them ngon ngu: them ma vao day roi khoi dong lai.
+      LANGUAGES: ${LANGUAGES:-vi,en,zh-CN,ja,ko,fr}
     volumes:
       - poi_storage:/app/storage
     depends_on:
       postgres: { condition: service_healthy }
+      content-service: { condition: service_started }
+
+  # Dich tu dong (Google Translate) + doc thanh audio (Edge-TTS) THEO YEU CAU. Can Internet.
+  # Chi poi-service goi toi (mang noi bo), khong mo cong ra ngoai. Cache audio nam trong container.
+  content-service:
+    build: ./services/content-service
+    environment:
+      PORT: 4005
+      CACHE_DIR: /tmp/tts-cache
 
   api-gateway:
     build: ./services/api-gateway
@@ -95,18 +107,6 @@ services:
     depends_on: [auth-service, payment-service, poi-service, redis]
 
   # Phuc vu trang quay nhan vien tai http://localhost:5174/staff.html (khong can Node/Python)
-  # Dich tu dong + tao audio (Edge-TTS). Can Internet.
-  content-worker:
-    build: ./services/content-worker
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/poi_db
-      AUDIO_DIR: /data/audio
-    volumes:
-      - audio_data:/data/audio
-    depends_on:
-      postgres: { condition: service_healthy }
-      poi-service: { condition: service_started }
-
   staff-ui:
     image: nginx:alpine
     ports: ["5174:80"]
@@ -122,11 +122,9 @@ services:
       - ./tools/tourist:/usr/share/nginx/html:ro
       - ./tools/admin:/usr/share/nginx/admin:ro
       - ./tools/staff:/usr/share/nginx/staff:ro
-      - audio_data:/usr/share/nginx/audio:ro
     depends_on: [api-gateway]
 
 volumes:
   pgdata:
   auth_keys:
   poi_storage:
-  audio_data:
