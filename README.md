@@ -11,7 +11,6 @@
 | Payment Service (đơn online/tiền mặt/MoMo QR, webhook, Outbox, báo cáo) | Đã có |
 | Thanh toán online qua **VNPAY Sandbox** (ký HMAC-SHA512, Return URL, IPN) | Đã có, bật bằng `ONLINE_PAYMENT_PROVIDER=vnpay`. Hướng dẫn: [`docs/VNPAY.md`](docs/VNPAY.md) |
 | Thanh toán online qua Payoo | Chỉ có chế độ **mock**; sandbox thật chưa làm (`payoo.ts` chế độ `sandbox` trả 501) |
-| Thanh toán MoMo QR (QR cá nhân, nhân viên đối soát tay) | Đã có |
 | POI Service (POI, bản dịch, tour, publish `dataset.json`) | Đã có |
 | Dịch và audio tự động (`content-worker`: Google Translate + Edge-TTS) | Đã chạy được, cần Internet |
 | Trang quầy nhân viên (`tools/staff`) | Đã có |
