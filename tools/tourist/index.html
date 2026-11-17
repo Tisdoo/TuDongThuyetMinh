@@ -892,7 +892,7 @@ async function startPolling(authCode) {
       const r = await api('POST', '/auth/exchange', { body: { authCode, lang } });
       if (r.status === 200) { polling = false; saveToken(r.data); return; }
       if (r.status !== 202) {
-        polling = false; store.del(PENDING, true);
+        polling = false;store.del(PENDING, true);
         showMessage(t('errTitle'), t('errCode') + ' (' + errCode(r) + ')', t('payAgain'), showPay);
         return;
       }

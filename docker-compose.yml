@@ -10,7 +10,7 @@ services:
     ports: ["5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -29,7 +29,11 @@ services:
       retries: 10
 
   auth-service:
-    build: ./services/auth-service
+    build:
+      context: ./services/auth-service
+      # File SQL tao bang nam o database/migrations (gom chung de quan ly DB)
+      additional_contexts:
+        dbmigrations: ./database/migrations/auth_db
     environment:
       PORT: 4001
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/auth_db
@@ -48,7 +52,10 @@ services:
       rabbitmq: { condition: service_healthy }
 
   payment-service:
-    build: ./services/payment-service
+    build:
+      context: ./services/payment-service
+      additional_contexts:
+        dbmigrations: ./database/migrations/payment_db
     environment:
       PORT: 4002
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/payment_db
@@ -72,7 +79,10 @@ services:
       rabbitmq: { condition: service_healthy }
 
   poi-service:
-    build: ./services/poi-service
+    build:
+      context: ./services/poi-service
+      additional_contexts:
+        dbmigrations: ./database/migrations/poi_db
     environment:
       PORT: 4003
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/poi_db

@@ -420,7 +420,7 @@ function validate(d) {
   const e = [];
   if (!CODE_RE.test(d.code || '')) e.push('mã POI không hợp lệ');
   if (!(d.latitude >= -90 && d.latitude <= 90) || !(d.longitude >= -180 && d.longitude <= 180) || Number.isNaN(d.latitude) || Number.isNaN(d.longitude)) e.push('tọa độ không hợp lệ');
-  if (!(d.triggerRadiusM >= 5 && d.triggerRadiusM <= 200)) e.push('bán kính phải từ 5 đến 200');
+  if (!(d.triggerRadiusM >= 1 && d.triggerRadiusM <= 200)) e.push('bán kính phải lớn hơn 1');
   if (!d.vi.name || !d.vi.desc) e.push('thiếu tên hoặc mô tả tiếng Việt');
   return e;
 }
