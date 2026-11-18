@@ -1,3 +1,6 @@
+# Co dinh ten project: giai nen ra thu muc ten khac van dung chung container va du lieu cu
+name: linhung-guide
+
 services:
   postgres:
     image: postgis/postgis:16-3.4
@@ -7,7 +10,7 @@ services:
     ports: ["5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -26,7 +29,11 @@ services:
       retries: 10
 
   auth-service:
-    build: ./services/auth-service
+    build:
+      context: ./services/auth-service
+      # File SQL tao bang nam o database/migrations (gom chung de quan ly DB)
+      additional_contexts:
+        dbmigrations: ./database/migrations/auth_db
     environment:
       PORT: 4001
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/auth_db
@@ -41,7 +48,10 @@ services:
       rabbitmq: { condition: service_healthy }
 
   payment-service:
-    build: ./services/payment-service
+    build:
+      context: ./services/payment-service
+      additional_contexts:
+        dbmigrations: ./database/migrations/payment_db
     environment:
       PORT: 4002
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/payment_db
@@ -60,14 +70,29 @@ services:
       rabbitmq: { condition: service_healthy }
 
   poi-service:
-    build: ./services/poi-service
+    build:
+      context: ./services/poi-service
+      additional_contexts:
+        dbmigrations: ./database/migrations/poi_db
     environment:
       PORT: 4003
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/poi_db
+      CONTENT_URL: http://content-service:4005
+      # Danh sach ngon ngu app hien thi (ma Google Translate). Them ngon ngu: them ma vao day roi khoi dong lai.
+      LANGUAGES: ${LANGUAGES:-vi,en,zh-CN,ja,ko,fr}
     volumes:
       - poi_storage:/app/storage
     depends_on:
       postgres: { condition: service_healthy }
+      content-service: { condition: service_started }
+
+  # Dich tu dong (Google Translate) + doc thanh audio (Edge-TTS) THEO YEU CAU. Can Internet.
+  # Chi poi-service goi toi (mang noi bo), khong mo cong ra ngoai. Cache audio nam trong container.
+  content-service:
+    build: ./services/content-service
+    environment:
+      PORT: 4005
+      CACHE_DIR: /tmp/tts-cache
 
   api-gateway:
     build: ./services/api-gateway
@@ -114,5 +139,6 @@ services:
 
 volumes:
   pgdata:
+  auth_keys:
   poi_storage:
   audio_data:

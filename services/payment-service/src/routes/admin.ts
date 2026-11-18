@@ -112,6 +112,13 @@ adminRouter.patch('/payments/admin/products/:id', adminOnly, ah(async (req, res)
   res.status(204).end();
 }));
 
+// Dashboard: tong doanh thu tu truoc toi nay (chi tinh don da thanh toan)
+adminRouter.get('/payments/admin/reports/summary', adminOnly, ah(async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT COALESCE(sum(amount), 0)::bigint AS total FROM payment_orders WHERE status = 'PAID'`);
+  res.json({ totalRevenue: Number(rows[0].total), currency: 'VND' });
+}));
+
 // Bao cao doanh thu theo ngay (gio Viet Nam)
 adminRouter.get('/payments/admin/reports/daily', adminOnly, ah(async (req, res) => {
   const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).parse(req.query.date ?? new Date().toISOString().slice(0, 10));

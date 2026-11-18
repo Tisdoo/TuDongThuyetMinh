@@ -31,6 +31,10 @@ const PUBLIC: Array<[string, RegExp]> = [
   ['GET', /^\/api\/payments\/orders\/[A-Za-z0-9]+$/],
   ['POST', /^\/api\/payments\/webhook\/payoo$/],
   ['GET', /^\/api\/payments\/mock\/payoo\/pay\/[A-Za-z0-9]+$/],
+  // VNPAY: Return URL (trinh duyet khach) va IPN (server VNPAY goi ngam) khong co JWT
+  ['GET', /^\/api\/payments\/vnpay\/return$/],
+  ['GET', /^\/api\/payments\/vnpay\/ipn$/],
+  ['POST', /^\/api\/payments\/vnpay\/ipn$/],
   ['POST', /^\/api\/auth\/(exchange|exchange-short)$/],
   ['POST', /^\/api\/auth\/staff\/(login|refresh|logout)$/],
   ['POST', /^\/api\/auth\/owner\/(register|registration-status)$/],
@@ -52,6 +56,7 @@ async function authenticate(req: Request, res: Response, next: NextFunction) {
     // Service tin cac header nay vi chi gateway moi toi duoc service (mang noi bo)
     req.headers['x-user-id'] = String(payload.sub ?? '');
     req.headers['x-user-role'] = role;
+    if (payload.username) req.headers['x-user-name'] = String(payload.username);
     if (payload.jti) req.headers['x-session-id'] = String(payload.jti);
     next();
   } catch {
@@ -70,7 +75,7 @@ app.use(cors({ origin: config.corsOrigin.split(','), credentials: false }));
 
 // Luon xoa header danh tinh do client gui len, tranh gia mao
 app.use((req, _res, next) => {
-  for (const h of ['x-user-id', 'x-user-role', 'x-session-id', 'x-internal-key']) delete req.headers[h];
+  for (const h of ['x-user-id', 'x-user-role', 'x-user-name', 'x-session-id', 'x-internal-key']) delete req.headers[h];
   next();
 });
 
@@ -84,6 +89,49 @@ app.use(['/api/payments/online', '/api/payments/cash', '/api/payments/momo-qr'],
   rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false }));
 
 app.use(authenticate);
+
+// ---------- Du khach dang online (presence) ----------
+// Trang du khach goi heartbeat moi 30 giay khi dang mo, goi leave khi dong/roi trang.
+// Luu trong Redis sorted set: member = jti (ma phien), score = thoi diem heartbeat cuoi (ms).
+// Qua PRESENCE_TTL_MS khong co heartbeat (tat may, mat mang, trinh duyet bi treo) thi khong tinh nua.
+const PRESENCE_KEY = 'presence:tourists';
+const PRESENCE_TTL_MS = 70_000; // ~2 lan heartbeat bi lo van con tinh, tranh nhap nhay so lieu
+
+app.post('/api/presence/heartbeat', async (req, res) => {
+  if (req.headers['x-user-role'] !== 'TOURIST') return deny(res, 403, 'FORBIDDEN');
+  const sid = String(req.headers['x-session-id'] ?? '');
+  if (!sid) return deny(res, 400, 'NO_SESSION');
+  try {
+    await redis.zadd(PRESENCE_KEY, Date.now(), sid);
+    res.status(204).end();
+  } catch {
+    deny(res, 503, 'PRESENCE_UNAVAILABLE');
+  }
+});
+
+app.post('/api/presence/leave', async (req, res) => {
+  const sid = String(req.headers['x-session-id'] ?? '');
+  try {
+    if (req.headers['x-user-role'] === 'TOURIST' && sid) await redis.zrem(PRESENCE_KEY, sid);
+    res.status(204).end();
+  } catch {
+    deny(res, 503, 'PRESENCE_UNAVAILABLE');
+  }
+});
+
+// Duong dan co "/admin/" nen da bi STAFF_ONLY chan du khach; o day kiem tra them role.
+app.get('/api/presence/admin/online', async (req, res) => {
+  const role = String(req.headers['x-user-role'] ?? '');
+  if (!['ADMIN', 'CONTENT_EDITOR'].includes(role)) return deny(res, 403, 'FORBIDDEN');
+  try {
+    const now = Date.now();
+    await redis.zremrangebyscore(PRESENCE_KEY, '-inf', now - PRESENCE_TTL_MS); // don phien da im lang qua lau
+    const online = await redis.zcard(PRESENCE_KEY);
+    res.json({ online, windowSec: PRESENCE_TTL_MS / 1000 });
+  } catch {
+    deny(res, 503, 'PRESENCE_UNAVAILABLE');
+  }
+});
 
 // KHONG dung express.json() o day: proxy can stream body nguyen ven (webhook can raw body)
 const proxy = (prefix: string, target: string) =>

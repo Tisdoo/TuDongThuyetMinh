@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test:vnpay": "tsx scripts/vnpay-selftest.ts",
+    "vnpay:sim-ipn": "tsx scripts/vnpay-sim-ipn.ts"
   },
   "dependencies": {
     "amqplib": "0.10.4",

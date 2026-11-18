@@ -4,6 +4,7 @@ import { AppError, inetOrNull, randomCode } from '../common';
 import { pool, tx } from '../db';
 import { enqueue } from './outbox';
 import { createPayment } from './payoo';
+import { buildPaymentUrl } from './vnpay';
 
 type Method = 'ONLINE' | 'CASH' | 'MOMO_QR';
 
@@ -62,15 +63,35 @@ export async function startOnlineOrder(productCode: string, lang: string | undef
   try {
     const grant = await createAuthGrant(order.id, 'ONLINE', product.validity_hours);
     const returnUrl = `${config.frontendUrl}/payment/return?auth_code=${encodeURIComponent(grant.authCode ?? '')}&order=${order.order_code}`;
-    const pay = await createPayment({
-      orderCode: order.order_code,
-      amount: Number(order.amount),
-      description: `Ve tham quan - ${product.name}`,
-    });
+    const description = `Ve tham quan - ${product.name}`;
+
+    // Chon cong thanh toan theo ONLINE_PAYMENT_PROVIDER
+    let provider: 'PAYOO' | 'VNPAY';
+    let pay: { paymentUrl: string; providerTxnId: string | null };
+    if (config.onlineProvider === 'vnpay') {
+      // VNPAY: tu tao URL co chu ky (HMAC-SHA512). Ma GD VNPAY chi co sau khi khach tra tien (IPN).
+      provider = 'VNPAY';
+      pay = {
+        providerTxnId: null,
+        paymentUrl: buildPaymentUrl({
+          orderCode: order.order_code,
+          amount: Number(order.amount),
+          orderInfo: `Thanh toan don hang ${order.order_code}`,
+          ipAddr: ip,
+          createdAt: new Date(),
+          expiresAt: new Date(order.expires_at), // VNPAY khoa thanh toan khi don het han
+          locale: lang?.toLowerCase().startsWith('vi') ? 'vn' : 'en',
+        }, config.vnpay),
+      };
+    } else {
+      provider = 'PAYOO';
+      pay = await createPayment({ orderCode: order.order_code, amount: Number(order.amount), description });
+    }
+
     await pool.query(
       `INSERT INTO payment_transactions (order_id, provider, provider_txn_id, payment_url, amount, status, raw_response)
-       VALUES ($1,'PAYOO',$2,$3,$4,'INITIATED',$5)`,
-      [order.id, pay.providerTxnId, pay.paymentUrl, order.amount, JSON.stringify({ returnUrl })],
+       VALUES ($1,$2,$3,$4,$5,'INITIATED',$6)`,
+      [order.id, provider, pay.providerTxnId, pay.paymentUrl, order.amount, JSON.stringify({ returnUrl })],
     );
     return {
       orderCode: order.order_code,

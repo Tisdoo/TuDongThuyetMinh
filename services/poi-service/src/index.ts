@@ -5,6 +5,8 @@ import { pool } from './db';
 import { runMigrations } from './migrate';
 import { datasetRouter } from './routes/dataset';
 import { adminRouter } from './routes/admin';
+import { ownerRouter } from './routes/owner';
+import { i18nRouter } from './routes/i18n';
 
 async function main() {
   await runMigrations();
@@ -18,6 +20,8 @@ async function main() {
   });
   app.use(datasetRouter);
   app.use(adminRouter);
+  app.use(ownerRouter);
+  app.use(i18nRouter);
   app.use(errorHandler);
 
   app.listen(config.port, () => console.log(`[poi-service] listening on :${config.port}`));

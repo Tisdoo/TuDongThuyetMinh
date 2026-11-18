@@ -12,5 +12,5 @@ ENV NODE_ENV=production
 COPY package.json ./
 RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist
-COPY migrations ./migrations
+COPY --from=dbmigrations . ./migrations
 CMD ["node", "dist/index.js"]

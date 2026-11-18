@@ -1,0 +1,304 @@
+diff --git a/services/api-gateway/src/index.ts b/services/api-gateway/src/index.ts
+index 58ece99..a8b9ac6 100644
+--- a/services/api-gateway/src/index.ts
++++ b/services/api-gateway/src/index.ts
+@@ -90,6 +90,49 @@ app.use(['/api/payments/online', '/api/payments/cash', '/api/payments/momo-qr'],
+ 
+ app.use(authenticate);
+ 
++// ---------- Du khach dang online (presence) ----------
++// Trang du khach goi heartbeat moi 30 giay khi dang mo, goi leave khi dong/roi trang.
++// Luu trong Redis sorted set: member = jti (ma phien), score = thoi diem heartbeat cuoi (ms).
++// Qua PRESENCE_TTL_MS khong co heartbeat (tat may, mat mang, trinh duyet bi treo) thi khong tinh nua.
++const PRESENCE_KEY = 'presence:tourists';
++const PRESENCE_TTL_MS = 70_000; // ~2 lan heartbeat bi lo van con tinh, tranh nhap nhay so lieu
++
++app.post('/api/presence/heartbeat', async (req, res) => {
++  if (req.headers['x-user-role'] !== 'TOURIST') return deny(res, 403, 'FORBIDDEN');
++  const sid = String(req.headers['x-session-id'] ?? '');
++  if (!sid) return deny(res, 400, 'NO_SESSION');
++  try {
++    await redis.zadd(PRESENCE_KEY, Date.now(), sid);
++    res.status(204).end();
++  } catch {
++    deny(res, 503, 'PRESENCE_UNAVAILABLE');
++  }
++});
++
++app.post('/api/presence/leave', async (req, res) => {
++  const sid = String(req.headers['x-session-id'] ?? '');
++  try {
++    if (req.headers['x-user-role'] === 'TOURIST' && sid) await redis.zrem(PRESENCE_KEY, sid);
++    res.status(204).end();
++  } catch {
++    deny(res, 503, 'PRESENCE_UNAVAILABLE');
++  }
++});
++
++// Duong dan co "/admin/" nen da bi STAFF_ONLY chan du khach; o day kiem tra them role.
++app.get('/api/presence/admin/online', async (req, res) => {
++  const role = String(req.headers['x-user-role'] ?? '');
++  if (!['ADMIN', 'CONTENT_EDITOR'].includes(role)) return deny(res, 403, 'FORBIDDEN');
++  try {
++    const now = Date.now();
++    await redis.zremrangebyscore(PRESENCE_KEY, '-inf', now - PRESENCE_TTL_MS); // don phien da im lang qua lau
++    const online = await redis.zcard(PRESENCE_KEY);
++    res.json({ online, windowSec: PRESENCE_TTL_MS / 1000 });
++  } catch {
++    deny(res, 503, 'PRESENCE_UNAVAILABLE');
++  }
++});
++
+ // KHONG dung express.json() o day: proxy can stream body nguyen ven (webhook can raw body)
+ const proxy = (prefix: string, target: string) =>
+   createProxyMiddleware({
+diff --git a/services/payment-service/src/routes/admin.ts b/services/payment-service/src/routes/admin.ts
+index 3b49b6d..f78d28a 100644
+--- a/services/payment-service/src/routes/admin.ts
++++ b/services/payment-service/src/routes/admin.ts
+@@ -112,6 +112,13 @@ adminRouter.patch('/payments/admin/products/:id', adminOnly, ah(async (req, res)
+   res.status(204).end();
+ }));
+ 
++// Dashboard: tong doanh thu tu truoc toi nay (chi tinh don da thanh toan)
++adminRouter.get('/payments/admin/reports/summary', adminOnly, ah(async (_req, res) => {
++  const { rows } = await pool.query(
++    `SELECT COALESCE(sum(amount), 0)::bigint AS total FROM payment_orders WHERE status = 'PAID'`);
++  res.json({ totalRevenue: Number(rows[0].total), currency: 'VND' });
++}));
++
+ // Bao cao doanh thu theo ngay (gio Viet Nam)
+ adminRouter.get('/payments/admin/reports/daily', adminOnly, ah(async (req, res) => {
+   const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).parse(req.query.date ?? new Date().toISOString().slice(0, 10));
+diff --git a/services/poi-service/src/routes/admin.ts b/services/poi-service/src/routes/admin.ts
+index b88fd3a..a203c2f 100644
+--- a/services/poi-service/src/routes/admin.ts
++++ b/services/poi-service/src/routes/admin.ts
+@@ -195,6 +195,15 @@ adminRouter.post('/poi/admin/owner-pois/:id/reject', ah(async (req, res) => {
+   res.status(204).end();
+ }));
+ 
++// Dashboard: so POI hien co (khong tinh POI da luu tru) va so POI an (DRAFT, du khach khong thay)
++adminRouter.get('/poi/admin/stats', ah(async (_req, res) => {
++  const { rows } = await pool.query(
++    `SELECT count(*) FILTER (WHERE status <> 'ARCHIVED')::int AS total,
++            count(*) FILTER (WHERE status = 'DRAFT')::int     AS hidden
++       FROM pois`);
++  res.json(rows[0]);
++}));
++
+ // Xem tien do pipeline dich/TTS
+ adminRouter.get('/poi/admin/jobs', ah(async (_req, res) => {
+   const { rows } = await pool.query(
+diff --git a/tools/admin/index.html b/tools/admin/index.html
+index a90dcf8..5366bb6 100644
+--- a/tools/admin/index.html
++++ b/tools/admin/index.html
+@@ -58,24 +58,53 @@ td,th{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;verti
+ tr:last-child td{border-bottom:0}
+ td button{padding:6px 10px;font-size:.84rem;margin:2px 4px 2px 0}
+ pre{background:var(--surface-2);color:var(--ink);padding:12px;border-radius:10px;overflow:auto;max-height:280px;font-size:.84rem}
+-nav.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:4px;background:var(--surface-2);border-radius:12px;margin:10px 0 4px}
+-nav.tabs::-webkit-scrollbar{display:none}
+-nav.tabs button{flex:none;border:0;background:none;margin:0;padding:8px 14px;border-radius:9px;color:var(--muted);white-space:nowrap}
+-nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
++/* Bố cục sau đăng nhập: menu điều khiển cột trái, nội dung cột phải */
++#main{display:grid;grid-template-columns:232px minmax(0,1fr);gap:22px;align-items:start}
++.side{position:sticky;top:78px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 10px;box-shadow:var(--shadow)}
++.side .who{padding:0 8px 12px;border-bottom:1px solid var(--line);margin-bottom:10px}
++.side .who small{display:block;color:var(--muted);font-size:.76rem}
++.side .who b{display:block;font-size:.92rem;overflow-wrap:anywhere}
++.side .grp{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:10px 10px 4px}
++nav.tabs{display:flex;flex-direction:column;gap:2px}
++nav.tabs button{display:block;width:100%;text-align:left;border:0;background:none;margin:0;padding:9px 12px;border-radius:9px;color:var(--muted);white-space:nowrap}
++nav.tabs button:hover{background:var(--surface-2);color:var(--ink)}
++nav.tabs button.on{background:color-mix(in srgb, var(--red) 12%, transparent);color:var(--red);box-shadow:inset 3px 0 0 var(--red)}
++.side .links{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
++.side .links a{display:block;padding:7px 12px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:600}
++.side .links a:hover{background:var(--surface-2);color:var(--ink)}
++.side #btnLogout{width:100%;margin:8px 0 0}
++.content > .card:first-child{margin-top:0}
++/* Màn hình hẹp (điện thoại, tablet dọc): menu thành thanh cuộn ngang ở trên */
++@media (max-width:820px){
++  #main{grid-template-columns:minmax(0,1fr);gap:8px}
++  .side{position:static;padding:10px}
++  .side .grp,.side .links{display:none}
++  .side .who{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 10px}
++  nav.tabs{flex-direction:row;overflow-x:auto;scrollbar-width:none}
++  nav.tabs::-webkit-scrollbar{display:none}
++  nav.tabs button{width:auto;flex:none}
++  nav.tabs button.on{box-shadow:inset 0 -3px 0 var(--red)}
++  .side #btnLogout{width:auto;margin:0}
++}
+ .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
+ .leaflet-container{font-family:var(--font)}
+ 
+ #loginBox{max-width:420px;margin:40px auto}
+ #loginBox b{display:block;font-size:1.1rem;margin-bottom:8px}
+-#main > p:first-child{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px}
+ #pickMap{height:360px;border-radius:12px;margin:10px 0;border:1px solid var(--line)}
+ #tab-list > button:first-child{margin-bottom:8px}
+ #saveMsg,#pubMsg,#opMsg,#ownerMsg,#listMsg{margin-top:8px}
++.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px;margin-top:6px}
++.stat{background:var(--surface-2);border-radius:12px;padding:14px 16px}
++.stat .lbl{font-size:.84rem;color:var(--muted);font-weight:600}
++.stat .val{font-size:1.9rem;font-weight:800;letter-spacing:-.5px;line-height:1.2;margin:4px 0 2px;font-variant-numeric:tabular-nums}
++.stat .sub{font-size:.78rem;color:var(--muted)}
++.stat.live .lbl::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+ </style>
+ </head>
+ <body>
+-<header class="topbar" style="--maxw:1080px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M6 17h22a11 9 0 0 1-22 0z" fill="#f3d38e"/><path d="M12 28h10v1.8H12z" fill="#f3d38e"/><path d="M19 13.5 28.5 5M22 14l7.5-6" stroke="#f3d38e" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13c-1.4-1.6 1.4-2.6 0-4.4M15 13c-1.4-1.6 1.4-2.6 0-4.4" stroke="#f3d38e" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/></svg><div><b>Quản trị POI</b><small>Ẩm thực Quận 5 · Nhập liệu quán ăn</small></div><span class="sp"></span><a href="/">Web App du khách</a><a href="/owner.html">Trang chủ quán</a></div></header>
+-<main class="wrap" style="--maxw:1080px">
++<header class="topbar" style="--maxw:1280px"><div class="wrap"><svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#8f1d22"/><path d="M6 17h22a11 9 0 0 1-22 0z" fill="#f3d38e"/><path d="M12 28h10v1.8H12z" fill="#f3d38e"/><path d="M19 13.5 28.5 5M22 14l7.5-6" stroke="#f3d38e" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13c-1.4-1.6 1.4-2.6 0-4.4M15 13c-1.4-1.6 1.4-2.6 0-4.4" stroke="#f3d38e" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".85"/></svg><div><b>Quản trị POI</b><small>Ẩm thực Quận 5 · Nhập liệu quán ăn</small></div></div></header>
++<main class="wrap" style="--maxw:1280px">
+ 
+ <section id="loginBox" class="card">
+   <b>Đăng nhập (Admin hoặc Biên tập nội dung)</b>
+@@ -86,17 +115,37 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
+ </section>
+ 
+ <section id="main" class="hidden">
+-  <p>Đã đăng nhập: <b id="who"></b> <button id="btnLogout">Đăng xuất</button></p>
+-  <nav class="tabs">
+-    <button data-tab="list" class="on">Danh sách POI</button>
+-    <button data-tab="edit">Thêm / Sửa quán ăn</button>
+-    <button data-tab="csv">Nhập từ CSV</button>
+-    <button data-tab="owners">Duyệt chủ quán</button>
+-    <button data-tab="ownerpois">Duyệt POI chủ quán</button>
+-    <button data-tab="publish">Publish</button>
+-  </nav>
++  <!-- Menu điều khiển (cột trái). JS tìm nút theo selector "nav button" và data-tab. -->
++  <aside class="side">
++    <div class="who"><div><small>Đã đăng nhập</small><b id="who"></b></div><button id="btnLogout">Đăng xuất</button></div>
++    <nav class="tabs" aria-label="Menu quản trị">
++      <button data-tab="dash" class="on" aria-current="page">Tổng quan</button>
++      <div class="grp">Nội dung POI</div>
++      <button data-tab="list">Danh sách POI</button>
++      <button data-tab="edit">Thêm / Sửa quán ăn</button>
++      <button data-tab="csv">Nhập từ CSV</button>
++      <div class="grp">Chủ quán</div>
++      <button data-tab="owners">Duyệt chủ quán</button>
++      <button data-tab="ownerpois">Duyệt POI chủ quán</button>
++      <div class="grp">Xuất bản</div>
++      <button data-tab="publish">Publish</button>
++    </nav>
++    <div class="links"><a href="/">Web App du khách</a><a href="/owner.html">Trang chủ quán</a></div>
++  </aside>
++
++  <div class="content">
++
++  <div id="tab-dash" class="card">
++    <div class="stats">
++      <div class="stat live"><div class="lbl">Khách đang active</div><div class="val" id="sOnline">–</div><div class="sub">Đang mở web app du khách</div></div>
++      <div class="stat"><div class="lbl">POI hiện có</div><div class="val" id="sPoi">–</div><div class="sub">Không tính POI đã lưu trữ</div></div>
++      <div class="stat"><div class="lbl">POI ẩn</div><div class="val" id="sHidden">–</div><div class="sub">Trạng thái DRAFT, du khách không thấy</div></div>
++      <div class="stat"><div class="lbl">Tổng doanh thu</div><div class="val" id="sRevenue">–</div><div class="sub">Các đơn đã thanh toán</div></div>
++    </div>
++    <div id="dashMsg" class="muted" style="margin-top:10px"></div>
++  </div>
+ 
+-  <div id="tab-list" class="card">
++  <div id="tab-list" class="card hidden">
+     <button id="btnReload">Làm mới</button>
+     <table id="poiTable"></table>
+     <div id="listMsg" class="muted"></div>
+@@ -184,6 +233,7 @@ nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--s
+     <h2>Lịch sử phiên bản</h2>
+     <table id="verTable"></table>
+   </div>
++  </div><!-- /.content -->
+ </section>
+ 
+ </main>
+@@ -228,13 +278,34 @@ async function login() {
+   enter();
+ }
+ function logout() { token = ''; sessionStorage.removeItem(TK); $('main').classList.add('hidden'); $('loginBox').classList.remove('hidden'); }
+-function enter() { $('loginBox').classList.add('hidden'); $('main').classList.remove('hidden'); loadList(); }
++function enter() { $('loginBox').classList.add('hidden'); $('main').classList.remove('hidden'); loadList(); tab('dash'); }
++
++// ---------- Tổng quan (dashboard) ----------
++// Gọi 3 service song song; service nào lỗi thì chỉ ô đó hiện "lỗi", các ô khác vẫn có số.
++async function loadDash() {
++  const [online, poi, rev] = await Promise.all([
++    api('GET', '/presence/admin/online'),
++    api('GET', '/poi/admin/stats'),
++    api('GET', '/payments/admin/reports/summary'),
++  ]);
++  const show = (id, r, pick) => { $(id).textContent = r.status === 200 ? pick(r.data) : (r.status === 403 ? 'Chỉ ADMIN' : 'lỗi'); };
++  show('sOnline', online, (d) => d.online.toLocaleString('vi-VN'));
++  show('sPoi', poi, (d) => d.total.toLocaleString('vi-VN'));
++  show('sHidden', poi, (d) => d.hidden.toLocaleString('vi-VN'));
++  show('sRevenue', rev, (d) => d.totalRevenue.toLocaleString('vi-VN') + ' đ');
++  $('dashMsg').textContent = 'Cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN') + ' · tự làm mới mỗi 15 giây';
++}
+ 
+ // ---------- Tab ----------
+ function tab(name) {
+-  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+-  ['list', 'edit', 'csv', 'owners', 'ownerpois', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
++  document.querySelectorAll('nav button').forEach((b) => {
++    const on = b.dataset.tab === name;
++    b.classList.toggle('on', on);
++    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
++  });
++  ['dash', 'list', 'edit', 'csv', 'owners', 'ownerpois', 'publish'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== name));
+   clearInterval(jobTimer);
++  if (name === 'dash') { loadDash(); jobTimer = setInterval(loadDash, 15000); }
+   if (name === 'edit') { initMap(); setTimeout(() => map.invalidateSize(), 50); }
+   if (name === 'publish') { loadVersions(); loadJobs(); jobTimer = setInterval(loadJobs, 5000); }
+   if (name === 'owners') loadOwners();
+diff --git a/tools/tourist/index.html b/tools/tourist/index.html
+index 12202c2..1cbd4d0 100644
+--- a/tools/tourist/index.html
++++ b/tools/tourist/index.html
+@@ -708,7 +708,32 @@ async function api(method, path, { body, auth, headers } = {}) {
+   return { status: res.status, data };
+ }
+ const errCode = (r) => (r && r.data && r.data.error && r.data.error.code) || ('HTTP_' + (r && r.status));
++
++// ---------- Báo "đang online" cho dashboard admin ----------
++// Khi trang đang mở: gửi heartbeat mỗi 30 giây. Khi đóng tab / rời trang: gửi leave.
++// keepalive: true để trình duyệt vẫn gửi được request dù trang đang bị đóng (khác fetch thường).
++const HEARTBEAT_MS = 30000;
++let hbTimer = null;
++function sendPresence(kind) {
++  const tk = getToken();
++  if (!tk) return;
++  fetch(API + '/presence/' + kind, { method: 'POST', headers: { authorization: 'Bearer ' + tk }, keepalive: true }).catch(() => {});
++}
++function startPresence() {
++  if (hbTimer || !getToken()) return;
++  sendPresence('heartbeat');
++  hbTimer = setInterval(() => { if (getToken()) sendPresence('heartbeat'); else stopPresence(false); }, HEARTBEAT_MS);
++}
++function stopPresence(leave) {
++  clearInterval(hbTimer); hbTimer = null;
++  if (leave) sendPresence('leave');
++}
++window.addEventListener('pagehide', () => stopPresence(true));               // đóng tab, tải lại, chuyển trang
++window.addEventListener('pageshow', (e) => { if (e.persisted) startPresence(); }); // quay lại bằng nút Back (bfcache)
++document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hbTimer) sendPresence('heartbeat'); });
++
+ function logout(expired) {
++  stopPresence(true);
+   store.del(K.token); autoplay = false; $('btnAuto').classList.remove('on');
+   stopSpeech(); if (!$('detail').classList.contains('hidden')) closeDetail();
+   $('banner').classList.add('hidden');
+@@ -720,6 +745,7 @@ async function saveToken(data) {
+   store.set(K.token, data.accessToken);
+   store.del(PENDING, true); store.del(PENDING_MOMO, true);
+   await loadAndRender();
++  startPresence();
+   setView('home'); toast(t('unlocked'), 5000);
+ }
+ 
+@@ -1423,6 +1449,7 @@ async function boot() {
+     if (pending) return startPolling(pending);
+   }
+   if (!getToken()) { showPay(); return; }
++  startPresence();
+   setView('home');
+   // Vé hết hạn trong lúc đang dùng: khóa app, quay về màn hình mua vé
+   setInterval(() => { if (dataset && !getToken()) logout(true); }, 60000);
