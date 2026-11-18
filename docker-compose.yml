@@ -43,10 +43,6 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@12345}
       SEED_DEV_ACCOUNTS: ${SEED_DEV_ACCOUNTS:-true}
       PII_KEY: ${PII_KEY:-dev-pii-key-change-me}
-    # Giu khoa ky JWT qua cac lan build lai: khong co volume nay thi moi lan tao lai container
-    # se sinh khoa moi -> token cua khach da mua ve bi vo hieu, khach phai thanh toan lai
-    volumes:
-      - auth_keys:/app/.keys
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -69,11 +65,6 @@ services:
       SELF_URL: http://payment-service:4002
       MOMO_QR_URL: ${MOMO_QR_URL:-/momo-qr.svg}
       MOMO_ACCOUNT_NAME: ${MOMO_ACCOUNT_NAME:-}
-      ONLINE_PAYMENT_PROVIDER: ${ONLINE_PAYMENT_PROVIDER:-payoo}
-      VNP_TMN_CODE: ${VNP_TMN_CODE:-}
-      VNP_HASH_SECRET: ${VNP_HASH_SECRET:-}
-      VNP_URL: ${VNP_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
-      VNP_RETURN_URL: ${VNP_RETURN_URL:-}
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -117,6 +108,18 @@ services:
     depends_on: [auth-service, payment-service, poi-service, redis]
 
   # Phuc vu trang quay nhan vien tai http://localhost:5174/staff.html (khong can Node/Python)
+  # Dich tu dong + tao audio (Edge-TTS). Can Internet.
+  content-worker:
+    build: ./services/content-worker
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/poi_db
+      AUDIO_DIR: /data/audio
+    volumes:
+      - audio_data:/data/audio
+    depends_on:
+      postgres: { condition: service_healthy }
+      poi-service: { condition: service_started }
+
   staff-ui:
     image: nginx:alpine
     ports: ["5174:80"]
@@ -131,10 +134,11 @@ services:
       - ./infra/nginx/web.conf:/etc/nginx/conf.d/default.conf:ro
       - ./tools/tourist:/usr/share/nginx/html:ro
       - ./tools/admin:/usr/share/nginx/admin:ro
-      - ./tools/staff:/usr/share/nginx/staff:ro
+      - audio_data:/usr/share/nginx/audio:ro
     depends_on: [api-gateway]
 
 volumes:
   pgdata:
   auth_keys:
   poi_storage:
+  audio_data:

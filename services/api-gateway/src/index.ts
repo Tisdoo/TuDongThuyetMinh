@@ -38,9 +38,6 @@ const PUBLIC: Array<[string, RegExp]> = [
   ['POST', /^\/api\/auth\/(exchange|exchange-short)$/],
   ['POST', /^\/api\/auth\/staff\/(login|refresh|logout)$/],
   ['POST', /^\/api\/auth\/owner\/(register|registration-status)$/],
-  // Dich chu giao dien web du khach: khach chua mua ve cung can (poi-service tu cache, gioi han kich thuoc)
-  ['POST', /^\/api\/poi\/i18n$/],
-  ['GET', /^\/api\/poi\/languages$/],
 ];
 const isPublic = (req: Request) => PUBLIC.some(([m, re]) => m === req.method && re.test(req.path));
 
@@ -88,7 +85,6 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'api-gateway
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 200, standardHeaders: true, legacyHeaders: false }));
 app.use(['/api/auth/exchange', '/api/auth/exchange-short', '/api/auth/staff/login', '/api/auth/owner/register', '/api/auth/owner/registration-status'],
   rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }));
-app.use('/api/poi/i18n', rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }));
 app.use(['/api/payments/online', '/api/payments/cash', '/api/payments/momo-qr'],
   rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false }));
 

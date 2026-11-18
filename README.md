@@ -1,334 +1,275 @@
-# Ẩm thực Q5 cùng SGU – Hệ thống thuyết minh quán ăn tự động
+# GPS - Chùa Linh Ứng: Web App thuyết minh đa ngôn ngữ
 
-Đồ án môn Công nghệ phần mềm – Trường Đại học Sài Gòn.
+Đồ án Công nghệ phần mềm. Kiến trúc microservices: mỗi service có database riêng, giao tiếp qua REST nội bộ và RabbitMQ (Transactional Outbox).
 
-Web App giúp du khách khám phá ẩm thực khu Chợ Lớn (Quận 5, TP.HCM): mua vé ngày **không cần tài khoản**, xem bản đồ các quán, và **tự nghe thuyết minh bằng ngôn ngữ của mình** khi đi tới gần quán (GPS + geofence). Nội dung chỉ cần nhập tiếng Việt; hệ thống tự dịch sang 6 ngôn ngữ (vi, en, zh-CN, ja, ko, fr) và đọc thành audio.
+## 1. Trạng thái hiện tại
 
-Kiến trúc **microservice**: mỗi service một database, giao tiếp qua REST nội bộ và RabbitMQ (Transactional Outbox), chạy toàn bộ bằng Docker Compose.
+| Thành phần | Trạng thái |
+|---|---|
+| API Gateway (JWT/JWKS, rate limit, proxy) | Đã có |
+| Auth Service (token, mã ngắn, nhân viên, phân quyền, thu hồi phiên) | Đã có |
+| Payment Service (đơn online/tiền mặt, webhook, Outbox, báo cáo) | Đã có, Payoo ở chế độ **mock** |
+| POI Service (POI, bản dịch, tour, publish `dataset.json`) | Bản khởi đầu |
+| Trang quầy nhân viên (`tools/staff`) | Đã có |
+| Web App du khách (`tools/tourist`): thanh toán, bản đồ, GPS, geofence, nghe thuyết minh | Bản đầu tiên, cần thử trên thiết bị thật |
+| Trang quản trị POI (`tools/admin`): thêm POI bằng bản đồ/GPS, nhập CSV, publish | Bản đầu tiên, cần thử trên thiết bị thật |
+| Kiểm thử tự động (`scripts/smoke.mjs`) | Đã có |
+| Payoo sandbox thật | Chưa làm (`payoo.ts` chế độ `sandbox` trả 501) |
+| Dịch và audio tự động (`content-worker`) | Bản đầu tiên, cần thử với Internet |
+| Chủ quán tự đăng ký + Admin duyệt | Đã có phần đăng ký và duyệt; chủ quán gửi POI chờ duyệt chưa làm |
 
----
 
-## 1. Chức năng hiện có
 
-| Nhóm | Chức năng | Trạng thái |
-|---|---|---|
-| Bán vé | Mua vé online qua **VNPAY Sandbox** (ký HMAC-SHA512, IPN, Return URL) | ✅ Bật bằng `ONLINE_PAYMENT_PROVIDER=vnpay` – xem [docs/VNPAY.md](docs/VNPAY.md) |
-| | Thanh toán online **Payoo giả lập** (để test, smoke test) | ✅ `ONLINE_PAYMENT_PROVIDER=payoo` |
-| | Mua vé tiền mặt tại quầy, nhân viên xác nhận, khách nhập **mã ngắn 6 ký tự** | ✅ |
-| | Gói vé, báo cáo doanh thu | ✅ Gói vé chỉ có API; báo cáo tổng hợp có trên dashboard |
-| Vé & đăng nhập | Đổi mã lấy token du khách (JWT RS256), đăng nhập nội bộ, làm mới token | ✅ |
-| Thuyết minh | Bản đồ Leaflet, GPS, geofence (lọc sai số, đệm rời vùng, cooldown), banner "Gần bạn", tự phát | ✅ |
-| | Dịch tự động (Google Translate) + audio (Edge-TTS) theo yêu cầu, có cache; lỗi thì đọc bằng giọng thiết bị | ✅ Cần Internet |
-| Nội dung | Admin thêm/sửa/lưu trữ quán bằng bản đồ, nhập CSV, Publish dataset có phiên bản + ETag | ✅ |
-| Chủ địa điểm | Tự đăng ký (CCCD mã hóa AES-256-GCM, tự xóa sau 180 ngày), Admin duyệt hồ sơ | ✅ |
-| | Chủ quán gửi tối đa 10 quán, Admin duyệt/từ chối | ✅ |
-| Theo dõi | Số du khách đang online, nhật ký kiểm toán | ✅ |
-
-**Đã bỏ khỏi phạm vi (code còn nhưng không dùng):**
-- **Thanh toán QR MoMo**: đã gỡ khỏi giao diện React; API `/payments/momo-qr`, `confirm-momo` còn trong payment-service nhưng không có giao diện nào gọi. Database hiện không còn migration thêm `MOMO_QR`, nên gọi API này sẽ lỗi 500 – không ảnh hưởng thanh toán VNPAY và tiền mặt.
-- **Vai trò Biên tập viên (`CONTENT_EDITOR`)** và **quản trị tài khoản / thu hồi phiên (UC09)**: Admin làm luôn việc biên tập; API UC09 còn nhưng không có màn hình.
-
----
-
-## 2. Kiến trúc
+## 2. Cấu trúc thư mục
 
 ```
-Trình duyệt ──> nginx (web :5175, staff-ui :5174) ──/api/──> api-gateway :8080
-                                                               │  JWT (JWKS), rate limit,
-                                                               │  xóa header giả, proxy
-                       ┌───────────────────────┬───────────────┴──────────────┐
-                       ▼                       ▼                              ▼
-              auth-service :4001      payment-service :4002          poi-service :4003
-              auth_db + Redis         payment_db                     poi_db (PostGIS) + file dataset
-                    ▲                       │ outbox                         │
-                    └──── RabbitMQ ◄────────┘ (PaymentSucceeded/Failed)      ▼
-                                                                    content-service :4005 (Python)
-                                                                    Google Translate + Edge-TTS
-```
-
-| Service | Cổng | Trách nhiệm | Dữ liệu |
-|---|---|---|---|
-| `api-gateway` | 8080 | Xác thực JWT, chặn du khách khỏi route quản trị, rate limit, đếm khách online | Redis |
-| `auth-service` | 4001 | Đăng nhập nội bộ, refresh token, quyền vào app (grant), mã ngắn, ký JWT, chủ địa điểm, nhật ký | `auth_db`, Redis |
-| `payment-service` | 4002 | Gói vé, đơn hàng, VNPAY / Payoo / tiền mặt, IPN, outbox, báo cáo | `payment_db` |
-| `poi-service` | 4003 | Quán ăn, quán của chủ quán, duyệt, publish dataset, dịch theo ngôn ngữ, proxy audio | `poi_db`, file dataset |
-| `content-service` | 4005 | Dịch và tạo MP3 (chỉ poi-service gọi, không mở cổng ra ngoài) | thư mục cache |
-| `postgres` | 5432 | PostgreSQL 16 + PostGIS, 3 database | volume `pgdata` |
-| `redis` | 6379 | Mã ngắn, đếm sai, denylist token, khách online | – |
-| `rabbitmq` | 5672, 15672 | Exchange `domain.events`, queue `auth.payment-events` | – |
-| `web`, `staff-ui` | 5175, 5174 | nginx phục vụ giao diện, chuyển `/api/` sang gateway | – |
-
----
-
-## 3. Cấu trúc thư mục
-
-```
-DemoLan2/
-├── docker-compose.yml           10 container: postgres, redis, rabbitmq, 5 service, 2 nginx
-├── .env.example                 mẫu cấu hình (copy thành .env – KHÔNG commit .env)
-├── database/
-│   ├── init.sql                 tạo 3 database: auth_db, payment_db, poi_db
-│   ├── migrations/<db>/*.sql    file SQL tạo bảng, chạy tự động khi service khởi động
-│   ├── scripts/db.ps1           status, psql, backup, restore, migrate, reset
-│   └── README.md                giải thích các bảng và cách migration chạy
-├── infra/nginx/web.conf         nginx cổng 5175: web du khách, /admin, /staff, chuyển /api sang gateway
+linhung-guide/
+├── docker-compose.yml        PostgreSQL+PostGIS, Redis, RabbitMQ + 4 service
+├── .env.example              mẫu cấu hình (copy thành .env)
+├── infra/postgres/init.sql   tạo 3 database: auth_db, payment_db, poi_db
 ├── services/
-│   ├── api-gateway/             src/index.ts
-│   ├── auth-service/            src/routes, src/services (grants, staff, owners, tokens, pii), events.ts, mq.ts
-│   ├── payment-service/         src/routes, src/services (orders, vnpay*, webhook, outbox), scripts/ (VNPAY test)
-│   ├── poi-service/             src/routes (admin, owner, dataset, i18n), src/services (builder, localize)
-│   └── content-service/         app.py, test_app.py
-├── tools/
-│   ├── tourist/index.html       Web App du khách (HTML/JS + Leaflet + Web Speech)
-│   ├── tourist/owner-register.html, owner.html   chủ địa điểm
-│   ├── tourist/img/             ảnh quán (nginx phục vụ ở /img/...)
-│   ├── admin/index.html         trang quản trị
-│   └── staff/staff.html         trang quầy
-├── scripts/smoke.mjs            kiểm thử tự động 44 bước qua gateway
-└── docs/                        tài liệu (xem mục 12)
+│   ├── api-gateway/    :8080  xác thực JWT, rate limit, proxy
+│   ├── auth-service/   :4001  grant, token RS256, mã ngắn (Redis), nhân viên, audit
+│   ├── payment-service/:4002  vé, đơn hàng, Payoo (mock), tiền mặt, webhook, outbox
+│   └── poi-service/    :4003  POI, bản dịch, tour, dataset
+├── infra/nginx/web.conf      nginx phục vụ web du khách + admin, chuyển /api sang Gateway
+├── tools/tourist/index.html  Web App du khách (một file, Leaflet + Web Speech)
+├── tools/admin/index.html    trang quản trị POI (bản đồ, GPS, CSV, publish)
+├── services/content-worker/  worker Python: dịch tự động + audio Edge-TTS
+├── tools/staff/staff.html    trang quầy nhân viên
+├── scripts/smoke.mjs         kiểm thử tự động các luồng chính
+└── docs/
+    ├── data/poi-seed.sample.csv  file CSV mẫu để nhập POI
+    ├── postman/              Postman collection + environment
+    └── poi-suggestions/      geofence.ts (frontend), worker.py (pipeline dịch/TTS)
 ```
 
-Mỗi service Node.js chia 3 lớp: `routes/*.ts` (nhận HTTP, kiểm dữ liệu bằng Zod) → `services/*.ts` (nghiệp vụ) → `db.ts` (PostgreSQL).
+Chỉ **API Gateway** mở ra ngoài (cổng 8080). Các service còn lại chỉ truy cập được trong mạng Docker; Gateway xác thực JWT rồi gắn header `x-user-id`, `x-user-role` để service tin.
 
----
-
-## 4. Yêu cầu cài đặt
+## 3. Yêu cầu cài đặt
 
 | Công cụ | Dùng để | Bắt buộc |
 |---|---|---|
 | Docker Desktop (Windows: bật WSL2) | Chạy toàn bộ hệ thống | Có |
 | Git | Quản lý mã nguồn | Có |
-| Node.js 20 LTS | Chạy `smoke.mjs`, script VNPAY | Cho kiểm thử |
-| ngrok | HTTPS cho điện thoại (GPS) và cho VNPAY gọi IPN | Khi thử điện thoại / VNPAY |
-| pgAdmin 4 | Xem và kiểm tra database | Nên có |
-| VS Code, Postman | Đọc code, gọi API | Nên có |
+| VS Code | Đọc và sửa code | Nên có |
+| Postman | Gọi API bằng giao diện | Nên có |
+| Node.js 20 LTS | Chạy `smoke.mjs`, chạy từng service để debug | Cần cho kiểm thử |
+| Python 3.11+ | Chạy trang nhân viên (`http.server`), pipeline sau này | Tùy chọn |
+## 4. Chạy hệ thống
 
----
+Mở Docker Desktop, chờ báo **Engine running**. Mở PowerShell **tại thư mục gốc `linhung-guide`** (nơi có `docker-compose.yml`):
 
-## 5. Chạy hệ thống
-
-Mở Docker Desktop, chờ **Engine running**. Mở terminal tại thư mục có `docker-compose.yml`:
-
-```bash
-cp .env.example .env          # PowerShell: Copy-Item .env.example .env
-docker compose up -d --build
-docker compose ps             # 10 container phải "running"
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
 ```
 
-Lần đầu mất 3–10 phút. Kiểm tra:
+Lần đầu mất 3 đến 10 phút. Xong khi log có các dòng `listening on :4001`, `:4002`, `:4003`, `:8080`. Vài dòng `connect failed, retry in 3s` lúc đầu là bình thường (RabbitMQ đang khởi động).
 
-| Địa chỉ | Kết quả đúng |
-|---|---|
-| http://localhost:8080/health | `{"status":"ok","service":"api-gateway"}` |
-| http://localhost:8080/api/payments/products | Có gói `DAY_PASS` |
-| http://localhost:5175 | Web App du khách |
-| http://localhost:15672 (guest / guest) | Giao diện RabbitMQ |
+Kiểm tra:
+- `http://localhost:8080/health` trả `{"status":"ok","service":"api-gateway"}`
+- `http://localhost:8080/api/payments/products` trả danh sách vé có `DAY_PASS`
+- RabbitMQ: `http://localhost:15672` (guest / guest)
 
 | Việc | Lệnh |
 |---|---|
-| Xem log một service | `docker compose logs -f payment-service` |
-| Build lại sau khi sửa code `.ts` / `.py` | `docker compose up -d --build poi-service` |
-| Sửa file HTML trong `tools/` | Không cần build, tải lại trang (Ctrl+F5) |
-| Áp dụng thay đổi `.env` | `docker compose up -d <service>` |
 | Dừng, giữ dữ liệu | `docker compose down` |
+| Chạy lại | `docker compose up` (thêm `-d` để chạy nền) |
+| Build lại một service sau khi sửa code | `docker compose up --build -d auth-service` |
+| Xem log | `docker compose logs -f payment-service` |
 | Xóa sạch dữ liệu, làm lại từ đầu | `docker compose down -v` |
 
-### Các trang
 
-| Trang | Địa chỉ | Dùng để |
-|---|---|---|
-| Web App du khách | http://localhost:5175 | Chọn ngôn ngữ, mua vé, bản đồ, nghe thuyết minh |
-| Giả lập vị trí | http://localhost:5175/?sim=1 | Bật nút giả lập rồi bấm lên bản đồ để "đi" – thử geofence không cần GPS |
-| Quản trị | http://localhost:5175/admin/ | Quán ăn, CSV, duyệt chủ quán và quán, Publish, dashboard |
-| Quầy nhân viên | http://localhost:5175/staff/ hoặc http://localhost:5174/staff.html | Xác nhận tiền mặt, đọc mã ngắn cho khách |
-| Chủ địa điểm đăng ký | http://localhost:5175/owner-register.html | Gửi hồ sơ, xem trạng thái |
-| Chủ địa điểm quản lý quán | http://localhost:5175/owner.html | Thêm, sửa, xóa quán của mình |
-
----
-
-## 6. Tài khoản và vai trò (dev / demo)
+## 5. Tài khoản mặc định (chỉ để dev/demo)
 
 | Tài khoản | Mật khẩu | Vai trò |
 |---|---|---|
-| `admin` | Giá trị `SEED_ADMIN_PASSWORD` trong `.env` | ADMIN |
-| `staff1` | Xem `services/auth-service/src/seed.ts` | STAFF (tạo khi `SEED_DEV_ACCOUNTS=true`) |
-| (tự đăng ký) | (tự đặt) | OWNER – đăng nhập được sau khi Admin duyệt hồ sơ |
+| `admin` | `Admin@12345` | ADMIN (đủ quyền nhân viên và quản trị) |
+| `staff1` | `Staff@12345` | STAFF (quầy thu tiền) |
 
-| Vai trò | Được làm |
-|---|---|
-| `TOURIST` (token vé) | Tải dataset, nghe thuyết minh |
-| `STAFF` | Quầy: tìm đơn, xác nhận tiền mặt, lấy / cấp lại mã ngắn |
-| `ADMIN` | Mọi việc: quán ăn, CSV, Publish, duyệt chủ quán và quán, xem CCCD, gói vé, báo cáo |
-| `OWNER` | Chỉ thêm / sửa / xóa quán **của chính mình**, quán phải chờ duyệt |
+`staff1` được tạo khi `SEED_DEV_ACCOUNTS=true` (mặc định trong `docker-compose.yml`). Khi triển khai thật phải đặt `SEED_DEV_ACCOUNTS=false` và đổi mật khẩu admin.
 
-Triển khai thật: đặt `SEED_DEV_ACCOUNTS=false` và đổi mật khẩu admin.
-
----
-
-## 7. Thanh toán
-
-### VNPAY Sandbox (`ONLINE_PAYMENT_PROVIDER=vnpay`)
-
-1. Điền `VNP_TMN_CODE`, `VNP_HASH_SECRET` (email VNPAY gửi khi đăng ký sandbox) vào **`.env`** – không ghi vào `.env.example`.
-2. Chạy ngrok cho cổng 5175 (mục 9), đặt `PUBLIC_BASE_URL` và `FRONTEND_URL` là link ngrok.
-3. Đặt IPN URL trên trang merchant VNPAY: `https://<ngrok>/api/payments/vnpay/ipn`.
-4. Mở Web App **qua link ngrok** → Thanh toán online → nhập thẻ test của sandbox.
-
-Chỉ **IPN** (server VNPAY gọi về, có chữ ký) mới ghi đơn `PAID`; Return URL chỉ để hiển thị. Chi tiết: [docs/VNPAY.md](docs/VNPAY.md).
-
-Giả lập IPN không cần ngrok (trong `services/payment-service`, cần `npm install` một lần):
-
-```bash
-npx tsx scripts/vnpay-selftest.ts                                  # kiểm thuật toán ký
-npx tsx scripts/vnpay-sim-ipn.ts <mã đơn> 20000 success            # hoặc fail | bad-signature | wrong-amount | unknown-order
-```
-
-### Payoo giả lập (`ONLINE_PAYMENT_PROVIDER=payoo`)
-
-Bấm Thanh toán online sẽ mở trang giả lập, tự báo "đã trả tiền" rồi quay về app. Thêm `?result=fail` vào link để thử thất bại. Dùng cho smoke test.
-
-### Tiền mặt
-
-Khách chọn "Trả tiền mặt tại quầy" → nhận mã đơn 8 ký tự → nhân viên tìm đơn, nhập số tiền, xác nhận → trang quầy hiện mã ngắn 6 ký tự → khách nhập mã vào app.
-
----
-
-## 8. Database
-
-- 3 database riêng (Database-per-Service), **không có khóa ngoại xuyên database** – liên kết bằng id (tham chiếu logic) và đồng bộ qua sự kiện.
-- Migration nằm ở `database/migrations/<db>/`, chạy tự động khi service khởi động; bảng `schema_migrations` ghi file đã chạy. **Thay đổi cấu trúc bảng phải tạo file migration mới**, không sửa file cũ.
-- Lệnh tiện ích: `powershell -File database/scripts/db.ps1 status | psql | backup | restore | migrate | reset`.
-
-Kết nối pgAdmin: Host `localhost`, Port `5432`, user `postgres`, password `postgres`.
-
-Không sửa tay: `payment_orders.status`, `access_grants`, `outbox_events` đang `PENDING`, `processed_events`, `schema_migrations`, các cột băm / mã hóa. Cú pháp SQL mẫu chạy được trên dự án: [docs/SQL-CO-BAN.sql](docs/SQL-CO-BAN.sql).
-
----
-
-## 9. Thử trên điện thoại (ngrok)
-
-GPS trên trình duyệt chỉ chạy với HTTPS, và VNPAY cần gọi được IPN từ Internet.
-
-1. `ngrok http 5175` → copy link `https://xxxx.ngrok-free.app`.
-2. Trong `.env`:
-   ```
-   FRONTEND_URL=https://xxxx.ngrok-free.app
-   PUBLIC_BASE_URL=https://xxxx.ngrok-free.app
-   ```
-3. `docker compose up -d payment-service`.
-4. Dùng VNPAY thì cập nhật IPN URL trên trang merchant.
-
-Mỗi lần link ngrok đổi phải làm lại bước 2–4. Ngrok tắt mà `PUBLIC_BASE_URL` vẫn trỏ tới ngrok thì link thanh toán trả 404.
-
----
-
-## 10. API chính (qua gateway `http://localhost:8080/api`)
+## 6. API chính (qua Gateway `http://localhost:8080/api`)
 
 | Mục đích | Phương thức và đường dẫn | Quyền |
 |---|---|---|
 | Danh sách vé | `GET /payments/products` | Công khai |
-| Tạo đơn online / tiền mặt | `POST /payments/online`, `POST /payments/cash` | Công khai (10 lần/phút) |
+| Tạo đơn online | `POST /payments/online` → `orderCode`, `paymentUrl`, `authCode` | Công khai |
+| Tạo đơn tiền mặt | `POST /payments/cash` → `orderCode`, `orderId` | Công khai |
 | Trạng thái đơn | `GET /payments/orders/{orderCode}` | Công khai |
-| VNPAY IPN / Return URL | `GET\|POST /payments/vnpay/ipn`, `GET /payments/vnpay/return` | Công khai (kiểm chữ ký) |
-| Đổi mã lấy vé | `POST /auth/exchange` (202 chưa trả / 200 có `accessToken`), `POST /auth/exchange-short` | Công khai |
-| Đăng nhập nội bộ | `POST /auth/staff/login`, `/refresh`, `/logout` | Công khai |
-| Chủ địa điểm đăng ký / xem trạng thái | `POST /auth/owner/register`, `/registration-status` | Công khai |
-| Ngôn ngữ, dịch chữ giao diện | `GET /poi/languages`, `POST /poi/i18n` | Công khai |
-| Tải dataset theo ngôn ngữ (ETag) | `GET /poi/dataset/latest?lang=ja` | Token vé |
-| Audio thuyết minh | `GET /poi/tts/{poiId}?lang=ja` | Token vé |
-| Báo hiện diện | `POST /presence/heartbeat`, `/leave` | Token vé |
-| Quầy: tìm đơn, xác nhận tiền mặt, hủy | `GET /payments/admin/orders[/by-code/{code}]`, `POST .../{id}/confirm-cash`, `.../cancel` | STAFF, ADMIN |
-| Mã ngắn | `GET /auth/staff/orders/{id}/short-code`, `POST .../reissue` | STAFF, ADMIN |
-| Gói vé, báo cáo | `/payments/admin/products`, `/payments/admin/reports/summary`, `/daily` | ADMIN |
-| Quán ăn | `GET/POST /poi/admin/pois`, `GET/PUT/DELETE /poi/admin/pois/{id}`, `PUT .../{id}/content` | ADMIN |
-| Duyệt quán chủ quán | `GET /poi/admin/owner-pois`, `POST .../{id}/approve`, `.../reject` | ADMIN |
-| Publish, lịch sử, thống kê | `POST /poi/admin/publish`, `GET /poi/admin/dataset-versions`, `GET /poi/admin/stats` | ADMIN |
-| Duyệt hồ sơ chủ quán, xem CCCD | `/auth/admin/owner-registrations[/{id}/approve\|reject\|id-number]` | ADMIN |
-| Quán của chủ quán | `GET/POST /poi/owner/pois`, `GET/PUT/DELETE /poi/owner/pois/{id}` | OWNER |
-| Số khách online | `GET /presence/admin/online` | ADMIN |
+| Đổi `authCode` lấy token | `POST /auth/exchange` (202 chưa trả tiền, 200 có `accessToken`) | Công khai |
+| Đổi mã ngắn lấy token | `POST /auth/exchange-short` | Công khai |
+| Đăng nhập nhân viên | `POST /auth/staff/login`, `/refresh`, `/logout` | Công khai |
+| Tìm đơn theo mã | `GET /payments/admin/orders/by-code/{code}` | STAFF, ADMIN |
+| Xác nhận thu tiền mặt | `POST /payments/admin/orders/{id}/confirm-cash` body `{"amountReceived":20000}` | STAFF, ADMIN |
+| Lấy / cấp lại mã ngắn | `GET /auth/staff/orders/{id}/short-code`, `POST .../short-code/reissue` | STAFF, ADMIN |
+| Tra cứu, hủy đơn | `GET /payments/admin/orders`, `POST /payments/admin/orders/{id}/cancel` | STAFF, ADMIN |
+| Quản lý vé, báo cáo ngày | `/payments/admin/products`, `/payments/admin/reports/daily` | ADMIN |
+| Quản lý nhân viên, phiên | `/auth/admin/staff`, `/auth/admin/sessions` | ADMIN |
+| POI, bản dịch, publish | `/poi/admin/pois`, `PUT .../translations/{lang}`, `POST /poi/admin/publish` | ADMIN, CONTENT_EDITOR |
+| Tải dataset (một lần) | `GET /poi/dataset/latest` | Token khách hoặc nhân viên |
 
-Quy ước: token gửi trong header `Authorization: Bearer <token>`; lỗi trả dạng `{ "error": { "code": "...", "message": "..." } }`; token nhân viên sống 15 phút, refresh 7 ngày; token du khách sống theo `validity_hours` của gói vé (mặc định 12 giờ).
+Quy ước:
+- Token gửi trong header `Authorization: Bearer <token>`.
+- Lỗi trả dạng `{ "error": { "code": "...", "message": "..." } }`.
+- Token nhân viên sống 15 phút; token khách sống theo `validity_hours` của vé (mặc định 12 giờ).
+- `authCode` hết hạn sau 30 phút; mã ngắn hết hạn sau 10 phút, dùng một lần.
+- Gateway giới hạn tần suất: 200 yêu cầu/phút chung, 30/phút cho đổi mã và đăng nhập, 10/phút cho tạo đơn.
 
----
+## 7. Thử luồng bằng Postman
 
-## 11. Kiểm thử
+Import hai file trong `docs/postman/` (collection `LinhUng` và environment `local`), chọn environment `local` ở góc trên bên phải (biến `base` = `http://localhost:8080/api`).
 
-```bash
+**Luồng online (mock Payoo):**
+1. `POST /payments/online` → lưu `authCode`, `paymentUrl`.
+2. `POST /auth/exchange` → **202** (chưa thanh toán).
+3. Mở `paymentUrl` trong trình duyệt để giả lập khách trả tiền (thêm `?result=fail` để thử thất bại). Trang lỗi `localhost:5173` hiện ra là bình thường khi chưa có frontend.
+4. Chờ 1 đến 2 giây, gọi lại `/auth/exchange` → **200** có `accessToken`.
+
+**Luồng tiền mặt:**
+1. `POST /payments/cash` → `orderCode`, `orderId`.
+2. `POST /auth/staff/login` (admin hoặc staff1) → `accessToken` nhân viên.
+3. `GET /payments/admin/orders/by-code/{orderCode}` → trạng thái `PENDING`.
+4. `POST /payments/admin/orders/{orderId}/confirm-cash` với `{"amountReceived":20000}` → `PAID`.
+5. `GET /auth/staff/orders/{orderId}/short-code` → có thể 202 vài lần, rồi 200 có `shortCode`.
+6. `POST /auth/exchange-short` với `{"shortCode":"..."}` → 200 có `accessToken`.
+
+Kết quả lỗi đúng khi thử sai (để kiểm tra phân quyền và chống lạm dụng):
+
+| Thao tác | Kết quả đúng |
+|---|---|
+| Dùng lại `authCode` | 409 `CODE_ALREADY_USED` |
+| Dùng lại mã ngắn | 401 `INVALID_CODE` |
+| Xác nhận thu tiền lần hai | 409 `ORDER_ALREADY_PAID` |
+| Thu sai số tiền trên đơn còn `PENDING` | 400 `AMOUNT_MISMATCH` |
+| Gọi API không có token | 401 |
+| Token khách gọi API nhân viên | 403 |
+| Nhập mã ngắn sai quá 5 lần | 429 `TOO_MANY_ATTEMPTS` (khóa IP 5 phút) |
+| Webhook sai chữ ký | 400 `INVALID_SIGNATURE` |
+
+Mở khóa nhanh sau khi thử sai mã ngắn: `docker compose exec redis redis-cli flushall`.
+
+## 8. Kiểm thử tự động
+
+Cần Node.js 20+. Ở thư mục gốc:
+
+```powershell
 node scripts/smoke.mjs
 ```
 
-44 bước qua gateway: đăng nhập, thanh toán online (Payoo giả lập), webhook sai chữ ký / trùng, phân quyền, tiền mặt + mã ngắn, thu hồi phiên, luồng chủ địa điểm.
+Script đi qua đăng nhập, luồng online, webhook sai chữ ký và trùng, phân quyền, luồng tiền mặt, thu hồi phiên; mỗi mục in `PASS` hoặc `FAIL`, thoát mã khác 0 nếu có lỗi. Không chạy quá 2 lần mỗi phút vì Gateway giới hạn tần suất. Thêm `BRUTE=1` để thử khóa mã ngắn (sẽ khóa IP 5 phút).
 
-- Chạy với **`ONLINE_PAYMENT_PROVIDER=payoo`**; khi đang dùng `vnpay` sẽ có 8 bước FAIL (smoke không tự trả tiền trên VNPAY được).
-- Cách nhau **ít nhất 1 phút** giữa hai lần chạy (giới hạn 30 lần/phút cho đổi mã + đăng nhập).
-- Mỗi lần chạy để lại dữ liệu thử (đơn hàng, tài khoản `owner_...`).
+Xem dữ liệu trong database:
 
-Kiểm thử khác:
+```powershell
+docker compose exec postgres psql -U postgres -d payment_db -c "select order_code, method, status, amount from payment_orders order by created_at desc limit 5;"
+docker compose exec postgres psql -U postgres -d payment_db -c "select event_id, signature_valid, processed, note from webhook_events;"
+docker compose exec postgres psql -U postgres -d auth_db -c "select channel, status, paid_at, consumed_at from access_grants order by created_at desc limit 5;"
+```
 
-| Phần | Lệnh |
+## 9. Trang quầy nhân viên
+
+Docker đã phục vụ sẵn trang này (service `staff-ui`, không cần cài Node hay Python):
+
+```powershell
+docker compose up -d
+```
+
+Mở `http://localhost:5174/staff.html`, đăng nhập `staff1`. Trang hiện danh sách đơn tiền mặt đang chờ (tự làm mới 5 giây); chọn đơn, bấm **Xác nhận ĐÃ THU**, mã 6 ký tự hiện ra để đọc cho khách. Cổng 5174 đã được cho phép CORS trong `docker-compose.yml`.
+
+## 9b. Web App du khách và trang quản trị POI
+
+Docker phục vụ cả hai qua service `web` (nginx, cổng **5175**), `/api` được chuyển sang Gateway nên không cần cấu hình CORS và ngrok chỉ cần một đường.
+
+| Trang | Địa chỉ | Dùng để |
+|---|---|---|
+| Web App du khách | `http://localhost:5175` | Thanh toán, bản đồ, GPS, nghe thuyết minh |
+| Chế độ giả lập vị trí | `http://localhost:5175/?sim=1` | Thử geofence khi không ở chùa: bấm nút 🧪 rồi chạm lên bản đồ để "đi" |
+| Quản trị POI | `http://localhost:5175/admin/` | Thêm, sửa POI, nhập CSV, publish |
+| Quầy nhân viên | `http://localhost:5174/staff.html` | Xác nhận thu tiền mặt |
+
+Trong `.env` phải có (bản `.env.example` mới đã cập nhật):
+```
+FRONTEND_URL=http://localhost:5175
+PUBLIC_BASE_URL=http://localhost:5175
+```
+Sau khi sửa `.env`: `docker compose up -d`.
+
+**Nạp dữ liệu POI:** đăng nhập `admin` ở trang quản trị; thêm từng POI ở tab "Thêm / Sửa POI" (chạm bản đồ hoặc dùng GPS để lấy tọa độ), hoặc nhập nhiều POI ở tab "Nhập từ CSV" (mẫu: `docs/data/poi-seed.sample.csv`). Sau đó vào tab "Publish". Tọa độ trong file mẫu chỉ là minh họa, phải thay bằng tọa độ thật.
+
+Hạn chế đã biết: Web App cần Internet để tải thư viện bản đồ và ô bản đồ (chưa hỗ trợ offline); giọng đọc phụ thuộc thiết bị (nếu máy không có giọng cho ngôn ngữ đó thì chỉ hiển thị văn bản); giới hạn thử mã ngắn tính theo IP lấy từ header `X-Forwarded-For`, chưa chống giả mạo header này khi triển khai thật.
+
+## 9c. Tính năng mới: chủ quán tự đăng ký, audio tự động
+
+| Tính năng | Cách dùng |
 |---|---|
-| Thuật toán ký VNPAY | `npx tsx scripts/vnpay-selftest.ts` (trong `services/payment-service`) |
-| Giả lập IPN VNPAY | `npx tsx scripts/vnpay-sim-ipn.ts <mã đơn> 20000 <kịch bản>` |
-| Unit test content-service | `python -m unittest test_app.py` (trong `services/content-service`) |
+| Chủ quán đăng ký | Mở `http://localhost:5175/owner-register.html`, điền hồ sơ. Admin duyệt ở trang admin, tab **Duyệt chủ quán** |
+| Thanh toán MoMo QR | Nút **Thanh toán MoMo (quét QR)** trên app du khách. Nhân viên xác nhận ở trang quầy (`:5174/staff.html`) |
+| Audio tự động | Service `content-worker` tự dịch và tạo MP3. Trang admin, tab **Publish**, bấm **Dịch và tạo audio cho tất cả POI** |
 
----
 
-## 12. Tài liệu
+**Dịch và audio dùng dịch vụ miễn phí không cần khóa API nhưng cần Internet:** Google Translate (qua `deep-translator`) và Microsoft Edge-TTS. Lần đầu build worker mất vài phút.
 
-| File | Nội dung |
-|---|---|
-| [docs/LUONG-8-USECASE.md](docs/LUONG-8-USECASE.md) | Luồng code UC01–UC08: đi qua file nào, hàm nào, dòng nào; muốn sửa gì thì sửa ở đâu |
-| [docs/HUONG-DAN-USE-CASE.md](docs/HUONG-DAN-USE-CASE.md) | Cách chạy thử từng use case, câu SQL kiểm tra, điểm phải giữ khi sửa code |
-| [docs/SQL-CO-BAN.sql](docs/SQL-CO-BAN.sql) | Cú pháp SQL cơ bản kèm ví dụ trên database dự án (mở bằng pgAdmin) |
-| [docs/VNPAY.md](docs/VNPAY.md) | Tích hợp VNPAY Sandbox |
-| [database/README.md](database/README.md) | Các bảng và cách migration chạy |
-| [docs/data/poi-seed.sample.csv](docs/data/poi-seed.sample.csv) | File CSV mẫu để nhập quán |
 
----
 
-## 13. Cấu hình (`.env`)
+## 10. Thử trên điện thoại (ngrok)
+
+Trình duyệt chỉ cho dùng GPS trên HTTPS, và điện thoại không truy cập được `localhost` của máy tính. Web App du khách và trang admin đã chạy ở cổng 5175:
+
+1. `ngrok http 5175`, copy link `https://xxxx.ngrok-free.app`.
+2. Trong `.env` đặt:
+   ```
+   FRONTEND_URL=https://xxxx.ngrok-free.app
+   PUBLIC_BASE_URL=https://xxxx.ngrok-free.app
+   ```
+3. `docker compose up -d` để payment-service nhận cấu hình mới.
+
+Mỗi lần khởi động lại ngrok, link đổi và phải cập nhật lại `.env`.
+
+## 11. Cấu hình (`.env`)
 
 | Biến | Ý nghĩa | Mặc định |
 |---|---|---|
-| `ONLINE_PAYMENT_PROVIDER` | Cổng thanh toán online: `vnpay` hoặc `payoo` (giả lập) | `payoo` |
-| `VNP_TMN_CODE`, `VNP_HASH_SECRET` | Mã website và khóa bí mật VNPAY | trống |
-| `VNP_URL`, `VNP_RETURN_URL` | Cổng VNPAY, nơi VNPAY đưa khách về | sandbox, `${PUBLIC_BASE_URL}/api/payments/vnpay/return` |
-| `FRONTEND_URL`, `PUBLIC_BASE_URL` | Địa chỉ công khai của web (localhost hoặc ngrok) | `http://localhost:5175` |
-| `PAYOO_MODE`, `PAYOO_CHECKSUM_KEY` | Payoo giả lập và khóa ký webhook | `mock` |
 | `INTERNAL_API_KEY` | Khóa Payment gọi nội bộ sang Auth | `change-me-internal-key` |
-| `PII_KEY` | Khóa mã hóa CCCD (đổi sau khi có dữ liệu thì CCCD cũ không giải mã được) | `dev-pii-key-change-me` |
-| `SEED_ADMIN_PASSWORD`, `SEED_DEV_ACCOUNTS` | Mật khẩu admin tạo lần đầu, có tạo `staff1` không | – , `true` |
-| `LANGUAGES` | Danh sách ngôn ngữ (tiếng Việt luôn đứng đầu) | `vi,en,zh-CN,ja,ko,fr` |
+| `PAYOO_MODE` | `mock` hoặc `sandbox` | `mock` |
+| `PAYOO_CHECKSUM_KEY` | Khóa ký webhook | `change-me-checksum-key` |
+| `FRONTEND_URL` | Nơi Payoo chuyển khách về sau thanh toán | `http://localhost:5175` |
+| `PUBLIC_BASE_URL` | URL công khai (dùng cho `paymentUrl` mock) | `http://localhost:5175` |
+| `SEED_ADMIN_PASSWORD` | Mật khẩu admin tạo lần đầu | `Admin@12345` |
+| `SEED_DEV_ACCOUNTS` | Tạo sẵn `staff1` (dev/demo) | `true` |
+| `CORS_ORIGIN` | Nguồn được phép gọi API từ trình duyệt | `http://localhost:5173,http://localhost:5174` |
 
-**Không commit `.env` và khóa bí mật.** `.env.example` chỉ chứa giá trị giữ chỗ.
+Khi triển khai thật bắt buộc đổi: `JWT_PRIVATE_KEY_PEM`, `INTERNAL_API_KEY`, `PAYOO_CHECKSUM_KEY`, mật khẩu admin; đặt `SEED_DEV_ACCOUNTS=false`; tách database server; dùng HTTPS.
 
----
-
-## 14. Xử lý sự cố
+## 12. Xử lý sự cố thường gặp
 
 | Hiện tượng | Nguyên nhân | Cách xử lý |
 |---|---|---|
-| `ports are not available ... bind: An attempt was made to access a socket in a way forbidden` (Windows) | Hyper-V/WinNAT giữ trước dải cổng chứa 8080, 5175… do dải cổng động bắt đầu từ 1024 | PowerShell **Administrator**: `netsh int ipv4 set dynamic tcp start=49152 num=16384` và lệnh tương tự cho `ipv6`, rồi khởi động lại máy. Kiểm tra: `netsh interface ipv4 show excludedportrange protocol=tcp` |
-| `port is already allocated` | Chương trình khác chiếm cổng | Tắt chương trình đó hoặc đổi số bên trái trong `ports` |
-| Smoke test nhiều bước báo 429 | Vượt giới hạn 30 lần/phút | Chờ 1 phút rồi chạy lại |
-| Link thanh toán trả 404 | `PUBLIC_BASE_URL` trỏ tới ngrok đang tắt | Bật ngrok hoặc đặt lại `http://localhost:5175` |
-| `/auth/exchange` luôn trả 202 | Chưa thanh toán xong / IPN chưa tới / sự kiện chưa qua RabbitMQ | Kiểm tra ngrok và IPN URL; `docker compose logs auth-service payment-service`; xem bảng `outbox_events` |
-| Payment-service dừng ngay khi khởi động | Bật `vnpay` mà thiếu `VNP_*` | Điền đủ trong `.env` |
-| App báo "chưa có bản dịch" | Google chặn / mất mạng; hệ thống trả tiếng Việt và thử lại sau 60 giây | Kiểm tra Internet; `docker compose logs content-service` |
-| Quán đã duyệt nhưng app chưa thấy | Chưa Publish | Trang quản trị → Publish |
-| Chủ quán đăng nhập báo sai mật khẩu | Hồ sơ chưa được duyệt | Admin duyệt hồ sơ |
-| Trang quầy / quản trị tự đăng xuất sau 15 phút | Hai trang này chưa tự làm mới token | Đăng nhập lại |
-| GPS không chạy trên điện thoại | Không phải HTTPS | Mở bằng link ngrok |
-| Bản đồ trắng | Không tải được thư viện / ô bản đồ | Kiểm tra Internet |
+| `docker compose` báo `no configuration file provided` | Đứng sai thư mục | `cd` về thư mục có `docker-compose.yml` |
+| `error during connect` / `cannot find the file specified` | Docker Desktop chưa chạy xong | Chờ trạng thái **Engine running** |
+| `port is already allocated` (5432, 6379, 5672, 8080) | Cổng bị chương trình khác chiếm | Tắt chương trình đó, hoặc đổi số bên trái trong `ports` |
+| Đăng nhập `staff1` báo 401 | Tài khoản chưa được tạo (bản cũ) | Cập nhật code mới rồi `docker compose up --build -d auth-service`, hoặc đăng nhập bằng `admin` |
+| `/auth/exchange` ra 401 `MISSING_TOKEN` | URL thiếu `/api` hoặc sai phương thức | Kiểm tra biến `base`, dùng POST, chọn environment `local` |
+| `/auth/exchange` luôn 202 | Chưa mở `paymentUrl`, hoặc event chưa tới Auth | Mở `paymentUrl`, chờ 2 giây; xem `docker compose logs auth-service` |
+| 409 `ORDER_ALREADY_PAID` | Đơn đã thu tiền | Đúng hành vi; tạo đơn mới để thử tiếp |
+| 429 `TOO_MANY_ATTEMPTS` | Bị khóa do nhập sai nhiều lần | `docker compose exec redis redis-cli flushall` |
+| `node is not recognized` | Chưa cài Node.js, hoặc chưa mở lại PowerShell sau khi cài | Cài Node 20 LTS, đóng và mở lại PowerShell |
+| Thanh toán xong báo lỗi `localhost:5173` | `.env` còn giá trị cũ | Sửa `FRONTEND_URL` và `PUBLIC_BASE_URL` thành `http://localhost:5175`, `docker compose up -d` |
+| Bản đồ trắng, không có ô bản đồ | Máy không có Internet hoặc chặn `tile.openstreetmap.org` / `unpkg.com` | Kiểm tra mạng |
+| GPS không hoạt động trên điện thoại | Trang không chạy HTTPS | Mở bằng link ngrok `https://...` |
+| Postgres lỗi trên Mac chip M1/M2 | Image `postgis/postgis` thiếu bản arm64 | Đổi image thành `imresamu/postgis:16-3.4-bookworm` |
 
-**Hạn chế đã biết:** chưa chạy offline; khách mất `authCode` sau khi trả online chưa có cách lấy lại vé; chưa có màn hình hoàn tiền cho đơn trả muộn (`LATE_PAYMENT_REVIEW`); hai người Publish cùng lúc thì người sau nhận lỗi 500; bản dịch chỉ lưu trong RAM nên khởi động lại poi-service thì phải dịch lại; ảnh quán chỉ nhận URL, chưa có upload.
+## 13. Quy ước làm việc nhóm
 
----
+- Mỗi người một nhánh: `feat/backend`, `feat/poi`, `feat/frontend`. Không đẩy thẳng lên `main`; gộp bằng Pull Request, nhóm trưởng duyệt.
+- Commit nhỏ, thường xuyên, mô tả rõ nội dung.
+- Không đưa lên git: `.env`, `.keys/`, `node_modules/`, token đăng nhập (đã có trong `.gitignore`, riêng token trong file Postman environment phải tự xóa trước khi xuất).
+- Đổi API phải báo nhóm trưởng và cập nhật mục 6 của file này cùng Postman collection.
+- Một hạng mục chỉ xong khi: chạy đúng trên máy người khác, đã gộp vào `main`, có ảnh hoặc video làm bằng chứng cho báo cáo.
 
-## 15. Quy ước làm việc nhóm
+## 14. Việc còn lại
 
-- Mỗi phần một nhánh: `feat/backend`, `feat/frontend`. Không đẩy thẳng lên `main`; gộp bằng Pull Request.
-- **Không dùng `git push --force`** trên nhánh chung.
- 
-- Thay đổi cấu trúc bảng → file migration mới trong `database/migrations/<db>/`.
-- Sửa xong chạy `node scripts/smoke.mjs` trước khi push; đổi API thì cập nhật mục 10 của file này.
+- Payoo sandbox thật: hoàn thiện `services/payment-service/src/services/payoo.ts` (chế độ `sandbox`); cần tài liệu sandbox của Payoo để điền định dạng request và chữ ký.
+- POI: publisher cho Outbox (sao từ payment-service), upload Blob/CDN, API `route_segments`, worker dịch và TTS (`docs/poi-suggestions/worker.py`).
+- Chế độ offline (Service Worker), monitoring, nhánh Chủ địa điểm (venues, duyệt POI), giao diện hoàn thiện cho Web App và Admin.
